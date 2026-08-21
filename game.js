@@ -162,8 +162,8 @@
       if(storyHud) storyHud.hidden=true;
       leafMiniActive=false;
       guardMiniActive=false;
-      if(leafMiniHud) leafMiniHud.hidden=true;
-      if(guardMiniHud) guardMiniHud.hidden=true;
+      if(leafMiniHud){leafMiniHud.hidden=true;leafMiniHud.style.display='none';}
+      if(guardMiniHud){guardMiniHud.hidden=true;guardMiniHud.style.display='none';}
       if(practiceLabel) practiceLabel.style.display='none';
       practiceExitButton.hidden=true;
       practiceExitButton.textContent='練習終了';
@@ -450,641 +450,29 @@
       }
 
       if(this.throwState){
+        if(typeof this.throwState.endT==='number'){
+          this.throwState.endT-=dt;
+          if(this.throwState.endT<=0){
+            this.throwState=null;
+          this.spinAngle=0;
+            this.spinAngle=0;
+          }
+        }
         // 舌投げだけは従来どおり画面平面内で回転
         this.spinAngle += this.throwState.spinSpeed * dt;
       } else {
         this.spinAngle *= Math.pow(.03, dt);
       }
 
-      // ルシファーさん：斜め下降キック連打。
-      if(this.specialType==='darknessRush' && this.luciferDiveHits<4){
-        const other=this.isPlayer?enemy:player;
-        const active=this.specialT<=.82 && this.specialT>=.12 && this.vy>30;
-        if(other && active){
-          const fx=this.x+this.face*42;
-          const fy=this.y+36;
-          const d=Math.hypot(other.x-fx,other.y-fy);
-          const now=performance.now();
-          if(d<other.radius+38 && (!this._lastDarkHit || now-this._lastDarkHit>125)){
-            this._lastDarkHit=now;
-            this.luciferDiveHits++;
-            const last=this.luciferDiveHits===4;
-            damageHit(this,other,(last?4.0:2.2)*this.damageMul,
-                      (last?145:45)*this.face,last?105:35);
-          }
-        }
-      }
-
-      // ボトムスマッシュ予約中：水底へ着くまで自動降下
-      if(this.crayfishSmashQueued){
-        this.crayfishSmashQueueT-=dt;
-        this.vx*=Math.pow(.20,dt);
-        this.vy=Math.max(this.vy,380);
-
-        if(this.y>=innerHeight-128){
-          this.specialType=null;
-          this.specialT=0;
-          executeCrayfishBottomSmash(this);
-        }else if(this.crayfishSmashQueueT<=0){
-          this.crayfishSmashQueued=false;
-          this.specialType=null;
-          this.specialT=0;
-          comboEl.textContent='';
-        }
-      }
-
-      // アスモデウスさん：クローラッシュ
-      // 土煙の中でも上下だけ少し相手へ自動追尾する。
-      if(this.specialType==='crayfishRush'){
-        const other=this.isPlayer?enemy:player;
-        const now=performance.now();
-
-        if(other){
-          const dy=other.y-this.y;
-          this.vy += Math.max(-90,Math.min(90,dy*2.2))*dt;
-
-          // 前方向の勢いを少し維持
-          if(Math.abs(this.vx)<300){
-            this.vx += this.face*160*dt;
-          }
-
-          if(Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+30){
-            if(now-(this.crayfishRushLastHit||0)>125){
-              this.crayfishRushLastHit=now;
-              this.crayfishRushStep++;
-              const fin=this.crayfishRushStep>=5;
-              damageHit(
-                this,other,
-                (fin?3.8:1.8)*this.damageMul,
-                (fin?155:34)*this.face,
-                fin?-40:0
-              );
-            }
-          }
-        }
-      }
-
-      // リヴァイアさん：高速突進噛みつき
-      if(this.specialType==='piranhaRush' && !this.piranhaRushHit){
-        const other=this.isPlayer?enemy:player;
-        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+12){
-          this.piranhaRushHit=true; damageHit(this,other,9.2*this.damageMul,265*this.face,-35);
-          other.hurtFace='both'; other.hurtFaceT=.65;
-        }
-      }
-      // リヴァイアさん：上空から急降下
-      if((this.specialType==='piranhaDivePunch'||this.specialType==='piranhaDiveKick') && this.piranhaDivePhase===2){
-        const other=this.isPlayer?enemy:player;
-        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+15){
-          this.piranhaDivePhase=3;
-          const side=this.specialType==='piranhaDivePunch'?1:-1;
-          damageHit(this,other,8.4*this.damageMul,120*this.face*side,245);
-          other.hurtFace='both'; other.hurtFaceT=.7;
-        }
-      }
-
-      // ウリエルさん：前傾タックル。接触した相手を回転させて吹き飛ばす。
-      if(this.specialType==='urielTackle' && !this.tackleHit){
-        const other=this.isPlayer?enemy:player;
-        if(other){
-          const fx=this.x+this.face*34;
-          const d=Math.hypot(other.x-fx,other.y-this.y);
-          if(d<other.radius+this.radius*.78){
-            this.tackleHit=true;
-            damageHit(this,other,9.0*this.damageMul,285*this.face,-70);
-            other.throwState={owner:this,spinSpeed:this.face*12,endT:.62,noWallDamage:true};
-            other.spinAngle=0;
-            other.hurtFace='both'; other.hurtFaceT=.7;
-            setTimeout(()=>{
-              if(other && other.throwState && other.throwState.owner===this){
-                other.throwState=null;
-              }
-            },620);
-          }
-        }
-      }
-
-      // 必殺技の赤いオーラが出ている間は、手足そのものに当たり判定を持たせる。
-      // 1回の必殺技につき1ヒット。見た目と判定の時間を一致させる。
-      if(this.specialType && !this.specialHitDone){
-        const other = this.isPlayer ? enemy : player;
-
-        if(other){
-          if(this.specialType==='uppercut'){
-            // 溜めが終わって上昇し始めてから赤い拳が有効。
-            const active = this.specialT<=.54 && this.specialT>=.08;
-            if(active){
-              const hx=this.x + this.face*48;
-              const hy=this.y - 22;
-              const hitDist=Math.hypot(other.x-hx, other.y-hy);
-
-              if(hitDist < other.radius + 28){
-                this.specialHitDone=true;
-                damageHit(this,other,8.0*this.damageMul,90*this.face,-230);
-              }
-            }
-          }else if(this.specialType==='dropkick'){
-            // 突進開始後、赤い足が消える直前まで有効。
-            const active = this.specialT<=.475 && this.specialT>=.06;
-            if(active){
-              const fx=this.x + this.face*61;
-              const fy=this.y + 39;
-              const hitDist=Math.hypot(other.x-fx, other.y-fy);
-
-              if(hitDist < other.radius + 31){
-                this.specialHitDone=true;
-                damageHit(this,other,10.0*this.damageMul,240*this.face,-35);
-              }
-            }
-          }
-        }
-      }
-
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      const minY=78, maxY=innerHeight-65;
-
-      // 舌投げで壁・床に当たった瞬間に追加ダメージ
-      if(this.throwState){
-        const hitWall = this.x<=45 || this.x>=innerWidth-45;
-        const hitFloor = this.y>=maxY;
-        if(hitWall || hitFloor){
-          const owner = this.throwState.owner;
-          this.x=Math.max(45,Math.min(innerWidth-45,this.x));
-          this.y=Math.max(minY,Math.min(maxY,this.y));
-
-          // 壁に当たる直前にガードを押していれば受け身成功。
-          // 床は今まで通りダメージ。壁だけ受け身可能。
-          if(hitWall && this.wallTechT>0){
-            this.throwState=null;
-            this.spinAngle=0;
-            this.wallTechT=0;
-            this.stun=.12;
-            this.hurtFaceT=.08;
-
-            // 壁を蹴るように軽く跳ね返る
-            this.vx *= -.28;
-            this.vy *= .18;
-
-            spawnImpact(this.x,this.y,'guard');
-
-            comboEl.textContent='UKEMI!';
-            setTimeout(()=>{
-              if(comboEl.textContent==='UKEMI!') comboEl.textContent='';
-            },520);
-          }else{
-            this.hp=Math.max(0,this.hp-7.0);
-            this.vx *= -.18;
-            this.vy = hitFloor ? -95 : this.vy*.25;
-            this.stun=.42;
-            spawnImpact(this.x,this.y,'hit');
-
-            if(owner && owner.isPlayer){
-              comboHits++;
-              comboTimer=1.15;
-              comboEl.textContent=`${comboHits} HIT!`;
-            }
-
-            this.throwState=null;
-            updateHud();
-            if(this.hp<=0) endGame(owner ? owner.isPlayer : false);
-          }
-        }
-      }
-
-      this.x=Math.max(45,Math.min(innerWidth-45,this.x));
-      this.y=Math.max(minY,Math.min(maxY,this.y));
-      if(this.y===maxY && !this.throwState) this.vy=Math.min(0,this.vy);
-
-      const other = this.isPlayer ? enemy : player;
-      if (other) this.face = other.x >= this.x ? 1 : -1;
-    }
-    hit(dmg,kx,ky) {
-      if(this.guard){
-        dmg*=.22; kx*=.2; ky*=.2;
-        spawnImpact(this.x,this.y,'guard');
-      } else {
-        this.stun=.18;
-        this.flash=.15;
-        this.hurtFaceT=.32;
-        this.hurtFace=Math.random()<.5?'wink':'both';
-        spawnImpact(this.x,this.y,'hit');
-      }
-      this.hp=Math.max(0,this.hp-dmg);
-      this.vx += kx; this.vy += ky;
-    }
-    draw() {
-      ctx.save();
-      ctx.translate(this.x,this.y);
-      const pal=fighterPalette(this.type);
-
-
-      // ピラニア：リヴァイアサンさん
-      if(this.type==='piranha'){
-        if(this.face<0) ctx.scale(-1,1);
-        // パンチは前転で背びれ斬り、キックはバク転で尻尾斬り
-        if((this.specialType==='piranhaDivePunch'||this.specialType==='piranhaDiveKick') && this.piranhaDivePhase>=2){
-          ctx.rotate(Math.PI/2); // 口を真下へ向けて急降下
-        }else if(this.attack==='punch' && this.specialType!=='piranhaDivePunch'){
-          const t=Math.max(0,Math.min(1,this.attackT/.34)); ctx.rotate((1-t)*Math.PI*2);
-        }else if(this.attack==='kick' && this.specialType!=='piranhaDiveKick'){
-          const t=Math.max(0,Math.min(1,this.attackT/.40)); ctx.rotate(-(1-t)*Math.PI*2);
-        }
-        if(this.flash>0) ctx.globalAlpha=.55;
-
-        // 胴体
-        ctx.fillStyle='#d63b32';
-        ctx.beginPath();
-        ctx.ellipse(0,8,43,28,0,0,Math.PI*2);
-        ctx.fill();
-
-        // 腹側
-        ctx.fillStyle='#e97850';
-        ctx.beginPath();
-        ctx.ellipse(4,16,29,15,0,0,Math.PI*2);
-        ctx.fill();
-
-        // 尾びれ
-        ctx.fillStyle='#2fae55';
-        ctx.beginPath();
-        ctx.moveTo(-37,6);
-        ctx.lineTo(-67,-16);
-        ctx.lineTo(-58,7);
-        ctx.lineTo(-68,29);
-        ctx.closePath();
-        ctx.fill();
-
-        // 背びれ
-        ctx.fillStyle='#279c4c';
-        ctx.beginPath();
-        ctx.moveTo(-8,-17);
-        ctx.lineTo(8,-39);
-        ctx.lineTo(18,-15);
-        ctx.closePath();
-        ctx.fill();
-
-        // 緑の斑点模様
-        ctx.fillStyle='#35b95d';
-        ctx.beginPath();
-        ctx.ellipse(-10,-3,11,7,-.25,0,Math.PI*2);
-        ctx.ellipse(10,15,8,5,.35,0,Math.PI*2);
-        ctx.fill();
-
-        // 目
-        ctx.fillStyle='#fff';
-        ctx.beginPath();
-        ctx.arc(22,-4,7,0,Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle='#111';
-        ctx.beginPath();
-        ctx.arc(24,-4,3,0,Math.PI*2);
-        ctx.fill();
-
-        // ピラニアらしい口と歯
-        ctx.fillStyle='#26343b';
-        ctx.beginPath();
-        ctx.moveTo(35,7);
-        ctx.lineTo(56,-2);
-        ctx.lineTo(53,15);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle='#fff';
-        for(let i=0;i<4;i++){
-          ctx.beginPath();
-          ctx.moveTo(39+i*4,4);
-          ctx.lineTo(41+i*4,9);
-          ctx.lineTo(43+i*4,4);
-          ctx.closePath();
-          ctx.fill();
-        }
-
-        // 通常パンチ/キック相当：体当たりや尾びれ攻撃に見える簡易表現
-        if(this.attack==='punch'){
-          ctx.strokeStyle='#c8e3ec';
-          ctx.lineWidth=6;
-          ctx.beginPath();
-          ctx.moveTo(34,2); ctx.lineTo(62,-8);
-          ctx.stroke();
-        }
-        if(this.attack==='kick'){
-          ctx.strokeStyle='#536b76';
-          ctx.lineWidth=10;
-          ctx.beginPath();
-          ctx.moveTo(-35,8); ctx.lineTo(-72,6);
-          ctx.stroke();
-        }
-
-        ctx.restore();
-        return;
-      }
-
-      // ザリガニ：アスモデウスさん
-      if(this.type==='crayfish'){
-        if(this.face<0) ctx.scale(-1,1);
-        if(this.flash>0) ctx.globalAlpha=.55;
-
-        // 胴体
-        ctx.fillStyle='#9b3f2f';
-        ctx.beginPath();
-        ctx.ellipse(-2,16,28,34,0,0,Math.PI*2);
-        ctx.fill();
-
-        // 頭
-        ctx.fillStyle='#b64d37';
-        ctx.beginPath();
-        ctx.ellipse(3,-10,29,24,0,0,Math.PI*2);
-        ctx.fill();
-
-        // 尻尾の節
-        ctx.fillStyle='#873427';
-        for(let i=0;i<3;i++){
-          ctx.beginPath();
-          ctx.ellipse(-8-i*10,43+i*7,18-i*2,10,0,0,Math.PI*2);
-          ctx.fill();
-        }
-
-        // 目
-        ctx.fillStyle='#fff';
-        ctx.beginPath();
-        ctx.arc(14,-23,5.5,0,Math.PI*2);
-        ctx.arc(-3,-23,5.5,0,Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle='#111';
-        ctx.beginPath();
-        ctx.arc(15,-23,2.5,0,Math.PI*2);
-        ctx.arc(-2,-23,2.5,0,Math.PI*2);
-        ctx.fill();
-
-        // ハサミ：腕だけでなくハサミ本体ごと振る
-        let clawExtend=0, clawY=7, armStartY=0;
-        if(this.attack==='crayfishStab') clawExtend=28;
-        if(this.attack==='crayfishHammer'){ clawExtend=8; clawY=42; armStartY=4; }
-        if(this.attack==='crayfishUpper'){ clawExtend=8; clawY=-34; armStartY=-4; }
-        if(this.specialType==='crayfishRush'){
-          clawExtend=18+Math.sin(performance.now()/45)*10;
-          clawY=Math.sin(performance.now()/55)*12;
-        }
-        ctx.strokeStyle='#a94331'; ctx.lineWidth=11; ctx.lineCap='round';
-        ctx.beginPath();
-        ctx.moveTo(18,armStartY); ctx.lineTo(42+clawExtend,clawY);
-        ctx.moveTo(-18,2); ctx.lineTo(-39,13); ctx.stroke();
-
-        ctx.fillStyle='#c95b40'; ctx.beginPath();
-        ctx.ellipse(49+clawExtend,clawY,19,14,.15,0,Math.PI*2);
-        ctx.ellipse(-45,13,17,12,-.15,0,Math.PI*2); ctx.fill();
-
-        if(this.attack==='crayfishHammer'||this.attack==='crayfishUpper'){
-          ctx.fillStyle='#e57a58'; ctx.beginPath();
-          ctx.ellipse(59+clawExtend,clawY-2,10,8,.2,0,Math.PI*2); ctx.fill();
-        }
-
-        // ハサミ割れ
-        ctx.strokeStyle='#793025';
-        ctx.lineWidth=3;
-        ctx.beginPath();
-        ctx.moveTo(49+clawExtend,clawY-11); ctx.lineTo(51+clawExtend,clawY+11);
-        ctx.moveTo(-45,2); ctx.lineTo(-45,23);
-        ctx.stroke();
-
-        // 触角
-        ctx.strokeStyle='#c7674f';
-        ctx.lineWidth=2.5;
-        ctx.beginPath();
-        ctx.moveTo(12,-28); ctx.quadraticCurveTo(39,-48,58,-39);
-        ctx.moveTo(-2,-28); ctx.quadraticCurveTo(-31,-49,-51,-37);
-        ctx.stroke();
-
-        // ボトムスマッシュ時は両ハサミを下へ
-        if(this.specialType==='crayfishBottomSmash'){
-          ctx.strokeStyle='#7a2f24';
-          ctx.lineWidth=12;
-          ctx.beginPath();
-          ctx.moveTo(12,5); ctx.lineTo(35,48);
-          ctx.moveTo(-12,7); ctx.lineTo(-28,50);
-          ctx.stroke();
-        }
-
-        ctx.restore();
-        return;
-      }
-
-      // ウリエルさんは少し大柄
-      if(this.bodyScale && this.bodyScale!==1) ctx.scale(this.bodyScale,this.bodyScale);
-
-      // クローラッシュ中は追尾角度に合わせてほんの少し傾く
-      if(this.specialType==='crayfishRush'){
-        ctx.rotate(Math.max(-.16,Math.min(.16,this.vy/520)));
-      }
-
-      // ガーディアンタックル中は少し前傾
-      if(this.specialType==='urielTackle') ctx.rotate(this.face*.22);
-
-      // ヘルラッシュ中は少し低い姿勢
-      if(this.specialType==='hellRush' && this.specialT>.55){
-        ctx.translate(0,8); ctx.scale(1.04,.90);
-      }
-
-      // かえる跳びアッパーの溜め：少ししゃがむ
-      if(this.specialType==='uppercut' && this.specialT>.48){
-        ctx.translate(0,10);
-        ctx.scale(1.08,.82);
-      }
-
-      if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
-      if(this.face<0) ctx.scale(-1,1);
-      if(this.flash>0) ctx.globalAlpha=.55;
-
-      ctx.save();
-      ctx.filter='none';
-
-      // 2頭身くらいの丸い胴体
-      ctx.fillStyle=pal.limb;
-      ctx.beginPath();
-      ctx.ellipse(0,31,30,34,0,0,Math.PI*2);
-      ctx.fill();
-
-      // お腹
-      ctx.fillStyle=pal.belly;
-      ctx.beginPath();
-      ctx.ellipse(2,36,19,23,0,0,Math.PI*2);
-      ctx.fill();
-
-      // ニュートラル脚：横に開かず、胴体の下に軽くたたむ。
-      // キック中は前脚をここでは描かず、攻撃ポーズ側で差し替える。
-      ctx.strokeStyle=pal.limb;
-      ctx.lineWidth=12;
-      ctx.lineCap='round';
-      ctx.lineJoin='round';
-      ctx.beginPath();
-      ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
-      if(this.attack!=='kick'){
-        ctx.moveTo(15,48); ctx.lineTo(19,62); ctx.lineTo(28,67);
-      }
-      ctx.stroke();
-
-      // ニュートラル腕。
-      // パンチ中・ガード中は通常腕を描かず、それぞれ専用ポーズに差し替える。
-      if(!this.guard && this.attack!=='wave'){
-        ctx.strokeStyle=pal.limb;
-        ctx.lineWidth=10;
-        ctx.beginPath();
-        ctx.moveTo(-23,22); ctx.lineTo(-32,35);
-        if(this.attack!=='punch'){
-          ctx.moveTo(23,22); ctx.lineTo(32,35);
-        }
-        ctx.stroke();
-      }
-
-      // リリスさん：右目の後ろに斜め付けした蝶結びリボン
-      if(this.type==='purple'){
-        ctx.save();
-
-        // 傾きを反対向きへ修正
-        ctx.translate(31,-40);
-        ctx.rotate(0.48);
-
-        ctx.strokeStyle='#8b2f72';
-        ctx.lineWidth=2.5;
-        ctx.lineJoin='round';
-
-        // 左の輪：丸ではなく先端を三角っぽく尖らせる
-        ctx.fillStyle='#ff86c8';
-        ctx.beginPath();
-        ctx.moveTo(-3,2);
-        ctx.lineTo(-29,-12);
-        ctx.lineTo(-25,6);
-        ctx.lineTo(-5,8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // 右の輪：こちらも三角寄り
-        ctx.beginPath();
-        ctx.moveTo(3,2);
-        ctx.lineTo(29,-12);
-        ctx.lineTo(25,6);
-        ctx.lineTo(5,8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // 結び目
-        ctx.fillStyle='#ffd0eb';
-        ctx.beginPath();
-        ctx.arc(0,4,6.5,0,Math.PI*2);
-        ctx.fill();
-        ctx.stroke();
-
-        // 垂れたリボン端も三角カットに
-        ctx.fillStyle='#f06fba';
-
-        ctx.beginPath();
-        ctx.moveTo(-3,9);
-        ctx.lineTo(-15,26);
-        ctx.lineTo(-7,22);
-        ctx.lineTo(-2,29);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(3,9);
-        ctx.lineTo(15,26);
-        ctx.lineTo(7,22);
-        ctx.lineTo(2,29);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.restore();
-      }
-
-      // 頭
-      ctx.fillStyle=pal.body;
-      ctx.beginPath();
-      ctx.ellipse(0,-6,35,30,0,0,Math.PI*2);
-      ctx.fill();
-
-      // 目のふくらみ
-      ctx.fillStyle=pal.eyeBump;
-      ctx.beginPath();
-      ctx.arc(-19,-29,16,0,Math.PI*2);
-      ctx.arc(19,-29,16,0,Math.PI*2);
-      ctx.fill();
-
-      // 目：通常時と被弾時で表情を変える
-      if(this.hurtFaceT>0 || this.throwState){
-        ctx.strokeStyle='#182a2a';
-        ctx.lineWidth=4;
-        ctx.lineCap='round';
-
-        if(this.hurtFace==='both'){
-          // 両目をぎゅっと閉じる
-          ctx.beginPath();
-          ctx.moveTo(-28,-30); ctx.lineTo(-19,-26); ctx.lineTo(-10,-30);
-          ctx.moveTo(10,-30); ctx.lineTo(19,-26); ctx.lineTo(28,-30);
-          ctx.stroke();
-        }else{
-          // 片目を閉じ、もう片方は開く
-          ctx.fillStyle='#fff';
-          ctx.beginPath();
-          ctx.arc(19,-30,10,0,Math.PI*2);
-          ctx.fill();
-
-          ctx.fillStyle='#182a2a';
-          ctx.beginPath();
-          ctx.arc(22,-29,4,0,Math.PI*2);
-          ctx.fill();
-
-          ctx.beginPath();
-          ctx.moveTo(-28,-30); ctx.lineTo(-19,-26); ctx.lineTo(-10,-30);
-          ctx.stroke();
-        }
-      }else{
-        ctx.fillStyle='#fff';
-        ctx.beginPath();
-        ctx.arc(-19,-30,10,0,Math.PI*2);
-        ctx.arc(19,-30,10,0,Math.PI*2);
-        ctx.fill();
-
-        ctx.fillStyle='#182a2a';
-        ctx.beginPath();
-        ctx.arc(-16,-29,4,0,Math.PI*2);
-        ctx.arc(22,-29,4,0,Math.PI*2);
-        ctx.fill();
-      }
-
-      // ほっぺ
-      ctx.fillStyle='rgba(255,130,150,.42)';
-      ctx.beginPath();
-      ctx.arc(-24,2,5,0,Math.PI*2);
-      ctx.arc(24,2,5,0,Math.PI*2);
-      ctx.fill();
-
-      // 口：被弾時は口角を下げる
-      ctx.strokeStyle='#255c31';
-      ctx.lineWidth=3;
-      ctx.lineCap='round';
-      ctx.beginPath();
-      if(this.hurtFaceT>0 || this.throwState){
-        ctx.arc(0,9,12,1.15*Math.PI,1.85*Math.PI);
-      }else{
-        ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);
-      }
-      ctx.stroke();
-
-      ctx.restore();
-
-      // ルシファーさん：シンプルな一本傷
+      // ルシファーさん：左右反転しても印象が変わらない顔中央の縦傷
       if(this.type==='black'){
         ctx.save();
-        ctx.strokeStyle='#a74a4e';
-        ctx.lineWidth=3.4;
+        ctx.strokeStyle='#6f1d24';
+        ctx.lineWidth=3.2;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(8,-27);
-        ctx.lineTo(24,-8);
+        ctx.moveTo(0,-18);
+        ctx.lineTo(0,6);
         ctx.stroke();
         ctx.restore();
       }
@@ -1573,22 +961,25 @@
   }
 
 
-  function spawnLeafTarget(slot=0){
-    // 右端から左端へ、攻撃しやすい高さに葉っぱを流す。
-    // 1枚の耐久は常に1。
+  function spawnLeafTarget(slot=0, initial=false){
     const laneCount=5;
     const lane=slot%laneCount;
     const top=innerHeight*.25;
     const bottom=innerHeight*.72;
     const y=top+(bottom-top)*(lane/(laneCount-1));
 
+    // initial=true のときは画面内～右端へ時間差配置。
+    // 通常生成は右端から入ってくる。
+    const x=initial
+      ? innerWidth*.42 + (slot%7)*innerWidth*.12
+      : innerWidth+35;
+
     leafTargets.push({
-      x:innerWidth+45+slot*75,
-      y:y+(Math.random()-.5)*20,
-      vx:-(150+Math.random()*45),
-      r:19+Math.random()*5,
+      x, y:y+(Math.random()-.5)*18,
+      vx:-(145+Math.random()*40),
+      r:20+Math.random()*4,
       rot:Math.random()*Math.PI*2,
-      spin:(Math.random()-.5)*1.2,
+      spin:(Math.random()-.5)*1.1,
       hp:1,
       hit:false
     });
@@ -1613,8 +1004,8 @@
     leafMiniScore=0;
     leafSpawnTimer=0;
 
-    if(leafMiniHud) leafMiniHud.hidden=false;
-    if(guardMiniHud) guardMiniHud.hidden=true;
+    if(leafMiniHud){ leafMiniHud.hidden=false; leafMiniHud.style.display='flex'; }
+    if(guardMiniHud){ guardMiniHud.hidden=true; guardMiniHud.style.display='none'; }
     guardMiniActive=false;
     if(leafMiniTimeEl) leafMiniTimeEl.textContent='60.0';
     if(leafMiniScoreEl) leafMiniScoreEl.textContent='0';
@@ -1633,7 +1024,7 @@
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
-    for(let i=0;i<10;i++) spawnLeafTarget(i);
+    for(let i=0;i<10;i++) spawnLeafTarget(i,true);
 
     running=true;
     last=performance.now();
@@ -1650,44 +1041,32 @@
   function checkLeafHits(){
     if(!leafMiniActive || !player) return;
 
-    // 何か攻撃を出している間、前方の葉っぱは1発で壊れる。
-    const attacking =
-      player.attackT>0 ||
-      player.specialT>0 ||
-      player.tongueT>0;
+    const normalAttack=player.attackT>0;
+    const tongueAttack=player.tongueT>0;
+    const specialAttack=player.specialT>0;
+    if(!normalAttack && !tongueAttack && !specialAttack) return;
 
-    if(!attacking) return;
-
-    let rx=105, ry=75;
-    if(player.type==='piranha'){rx=125;ry=85;}
-    if(player.type==='crayfish'){rx=125;ry=90;}
-    if(player.specialType){rx+=35;ry+=20;}
+    let reach=112;
+    let height=82;
+    if(tongueAttack){reach=190;height=58;}
+    if(player.type==='piranha'){reach=Math.max(reach,130);height=90;}
+    if(player.type==='crayfish'){reach=Math.max(reach,135);height=95;}
+    if(specialAttack){reach+=45;height+=24;}
 
     leafTargets.forEach(leaf=>{
       if(leaf.hit) return;
-
-      const dx=(leaf.x-player.x)*player.face;
+      const dx=leaf.x-player.x;
       const dy=Math.abs(leaf.y-player.y);
 
-      if(dx>-35 && dx<rx && dy<ry){
-        // 耐久1。パンチ1発程度の接触で即破壊。
+      // 基本は向いている側。キャラ中心に重なった葉っぱも確実に壊す。
+      const inFront=(dx*player.face)>=-28 && (dx*player.face)<=reach;
+      const overlapping=Math.abs(dx)<=player.radius+leaf.r;
+      if((inFront || overlapping) && dy<=height){
         leaf.hp=0;
         leaf.hit=true;
         leafMiniScore++;
-
-        if(leafMiniScoreEl) leafMiniScoreEl.textContent=String(leafMiniScore);
-
-        for(let i=0;i<7;i++){
-          particles.push({
-            x:leaf.x,
-            y:leaf.y,
-            vx:(Math.random()-.5)*170,
-            vy:(Math.random()-.5)*130,
-            t:.42+Math.random()*.24,
-            r:2+Math.random()*4,
-            type:'guard'
-          });
-        }
+        if(leafMiniScoreEl)leafMiniScoreEl.textContent=String(leafMiniScore);
+        spawnImpact(leaf.x,leaf.y,'guard');
       }
     });
   }
@@ -1715,8 +1094,8 @@
     guardTargets=[]; guardMiniActive=true; leafMiniActive=false;
     guardMiniTime=60; guardMiniScore=0; guardMiniMiss=0; guardSpawnTimer=2.2;
     guardMiniGuardTapTime=-9999;
-    if(leafMiniHud) leafMiniHud.hidden=true;
-    if(guardMiniHud) guardMiniHud.hidden=false;
+    if(leafMiniHud){ leafMiniHud.hidden=true; leafMiniHud.style.display='none'; }
+    if(guardMiniHud){ guardMiniHud.hidden=false; guardMiniHud.style.display='flex'; }
     if(guardMiniTimeEl) guardMiniTimeEl.textContent='60.0';
     if(guardMiniScoreEl) guardMiniScoreEl.textContent='0';
     if(guardMiniMissEl) guardMiniMissEl.textContent='0';
@@ -1808,9 +1187,18 @@
     gameMode=mode==='story'?'story':'battle';
     if(practiceLabel) practiceLabel.style.display='none';
     if(practiceExitButton) practiceExitButton.hidden=true;
-    if(leafMiniHud) leafMiniHud.hidden=true;
-    if(guardMiniHud) guardMiniHud.hidden=true;
-    leafMiniActive=false; guardMiniActive=false;
+    if(leafMiniHud){
+      leafMiniHud.hidden=true;
+      leafMiniHud.style.display='none';
+    }
+    if(guardMiniHud){
+      guardMiniHud.hidden=true;
+      guardMiniHud.style.display='none';
+    }
+    leafMiniActive=false;
+    guardMiniActive=false;
+    leafTargets=[];
+    guardTargets=[];
 
     gameOver=false;
     restartButton.hidden=true;
@@ -1845,6 +1233,14 @@
   }
 
   function startStoryMode(){
+    // ストーリー開始前にミニゲームHUD/状態を完全クリア
+    if(leafMiniHud){leafMiniHud.hidden=true;leafMiniHud.style.display='none';}
+    if(guardMiniHud){guardMiniHud.hidden=true;guardMiniHud.style.display='none';}
+    leafMiniActive=false;
+    guardMiniActive=false;
+    leafTargets=[];
+    guardTargets=[];
+
     storyQueue=playableTypes.filter(t=>t!==selectedFighter);
     storyQueue.push('beelzebub');
     storyFightIndex=0;
@@ -2644,11 +2040,16 @@
         // 2回目の舌は、相手を自分の後方へ回転させながら投げ飛ばす。
         const throwDir = -f.face;
 
+        // 連続舌投げ時に前回の回転状態を引き継がない
+        target.throwState=null;
+        target.spinAngle=0;
+
         target.throwState={
           owner:f,
-          spinSpeed: throwDir*15
+          spinSpeed: throwDir*15,
+          endT:.72,
+          noWallDamage:false
         };
-        target.spinAngle=0;
         target.hurtFace='both';
         target.hurtFaceT=.7;
 
@@ -3111,7 +2512,7 @@
         if(leafMiniTimeEl) leafMiniTimeEl.textContent=Math.max(0,leafMiniTime).toFixed(1);
 
         if(leafSpawnTimer<=0 && leafTargets.length<22){
-          spawnLeafTarget(0);
+          spawnLeafTarget(Math.floor(Math.random()*5),false);
           leafSpawnTimer=.24+Math.random()*.16;
         }
 
