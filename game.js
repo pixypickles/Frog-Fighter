@@ -91,6 +91,9 @@
       this.waveCooldown=0;
       this.guardBreakT=0;
 
+      // 壁受け身
+      this.wallTechT=0;
+
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
       this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
@@ -106,6 +109,7 @@
       if (this.guardStartT>0) this.guardStartT-=dt;
       if (this.waveCooldown>0) this.waveCooldown-=dt;
       if (this.guardBreakT>0) this.guardBreakT-=dt;
+      if (this.wallTechT>0) this.wallTechT-=dt;
       if (this.attackT>0) {
         this.attackT-=dt;
         if (this.attackT<=0) this.attack=null;
@@ -171,19 +175,43 @@
           const owner = this.throwState.owner;
           this.x=Math.max(45,Math.min(innerWidth-45,this.x));
           this.y=Math.max(minY,Math.min(maxY,this.y));
-          this.hp=Math.max(0,this.hp-7.0);
-          this.vx *= -.18;
-          this.vy = hitFloor ? -95 : this.vy*.25;
-          this.stun=.42;
-          spawnImpact(this.x,this.y,'hit');
-          if(owner && owner.isPlayer){
-            comboHits++;
-            comboTimer=1.15;
-            comboEl.textContent=`${comboHits} HIT!`;
+
+          // 壁に当たる直前にガードを押していれば受け身成功。
+          // 床は今まで通りダメージ。壁だけ受け身可能。
+          if(hitWall && this.wallTechT>0){
+            this.throwState=null;
+            this.spinAngle=0;
+            this.wallTechT=0;
+            this.stun=.12;
+            this.hurtFaceT=.08;
+
+            // 壁を蹴るように軽く跳ね返る
+            this.vx *= -.28;
+            this.vy *= .18;
+
+            spawnImpact(this.x,this.y,'guard');
+
+            comboEl.textContent='UKEMI!';
+            setTimeout(()=>{
+              if(comboEl.textContent==='UKEMI!') comboEl.textContent='';
+            },520);
+          }else{
+            this.hp=Math.max(0,this.hp-7.0);
+            this.vx *= -.18;
+            this.vy = hitFloor ? -95 : this.vy*.25;
+            this.stun=.42;
+            spawnImpact(this.x,this.y,'hit');
+
+            if(owner && owner.isPlayer){
+              comboHits++;
+              comboTimer=1.15;
+              comboEl.textContent=`${comboHits} HIT!`;
+            }
+
+            this.throwState=null;
+            updateHud();
+            if(this.hp<=0) endGame(owner ? owner.isPlayer : false);
           }
-          this.throwState=null;
-          updateHud();
-          if(this.hp<=0) endGame(owner ? owner.isPlayer : false);
         }
       }
 
@@ -611,19 +639,28 @@
     const down=e=>{
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
-        if(player && player.stun<=0){
-          const now=performance.now();
-          player.guardTapTimes=player.guardTapTimes.filter(t=>now-t<650);
-          player.guardTapTimes.push(now);
+        if(player){
+          // 舌投げで回転中は通常ガードではなく「壁受け身入力」。
+          // 約0.24秒だけ受け身受付を残す。
+          if(player.throwState){
+            player.wallTechT=.24;
+            return;
+          }
 
-          // ガード開始直後 約0.28秒はジャストガード受付。
-          player.guard=true;
-          player.guardStartT=.28;
+          if(player.stun<=0){
+            const now=performance.now();
+            player.guardTapTimes=player.guardTapTimes.filter(t=>now-t<650);
+            player.guardTapTimes.push(now);
 
-          // 650ms以内に3回で水押し波。ダメージは0、吹き飛ばしのみ。
-          if(player.guardTapTimes.length>=3){
-            player.guardTapTimes=[];
-            guardWave(player);
+            // ガード開始直後 約0.28秒はジャストガード受付。
+            player.guard=true;
+            player.guardStartT=.28;
+
+            // 650ms以内に3回で水押し波。ダメージは0、吹き飛ばしのみ。
+            if(player.guardTapTimes.length>=3){
+              player.guardTapTimes=[];
+              guardWave(player);
+            }
           }
         }
       }
@@ -752,7 +789,7 @@
       // ガード3連打で出る小さな水の波。
       guardWaves.forEach(w=>{
         w.t-=dt;
-        w.x += w.dir*245*dt;
+        w.x += w.dir*285*dt;
         w.r += 42*dt;
 
         const target=w.owner.isPlayer?enemy:player;
@@ -761,9 +798,9 @@
           if(Math.hypot(dx,dy)<w.r+target.radius){
             w.hit=true;
             // ダメージ無し。水圧だけで押し返す。
-            target.vx += w.dir*235;
-            target.vy += -28;
-            target.stun=Math.max(target.stun,.13);
+            target.vx += w.dir*365;
+            target.vy += -38;
+            target.stun=Math.max(target.stun,.16);
             spawnImpact(target.x,target.y,'guard');
           }
         }
