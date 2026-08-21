@@ -365,3 +365,25 @@ button{font:inherit;color:inherit}
 #selectScreen .fighter-card .special-hint{
   font-size:clamp(9px,1.7vw,13px);
 }
+
+.creature-emoji{
+  filter:none !important;
+}
+.boss-teaser{
+  flex:0 0 auto;
+  margin:6px auto 20px;
+  padding:9px 16px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:16px;
+  background:rgba(18,12,22,.30);
+  font-size:12px;
+  font-weight:1000;
+  text-align:center;
+}
+.boss-teaser small{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  font-weight:700;
+  opacity:.76;
+}

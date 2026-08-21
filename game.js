@@ -33,8 +33,10 @@
     blue:   { speed: 182, tongue: 260, damage: 0.88, defense:1.00, sink:5, hue:95, scale:1.00 },
     black:  { speed: 148, tongue: 225, damage: 1.22, defense:1.00, sink:9, hue:0, scale:1.00 },
     purple: { speed: 174, tongue: 245, damage: 0.92, defense:1.00, sink:5, hue:0, scale:1.00 },
-    yellow: { speed: 190, tongue: 225, damage: 0.92, defense:0.96, sink:4, hue:0, scale:1.00 },
-    orange: { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 }
+    yellow:  { speed: 190, tongue: 225, damage: 0.92, defense:0.96, sink:4, hue:0, scale:1.00 },
+    orange:  { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 },
+    piranha: { speed: 198, tongue: 0,   damage: 1.08, defense:0.90, sink:3, hue:0, scale:0.95 },
+    crayfish:{ speed: 138, tongue: 0,   damage: 1.18, defense:1.20, sink:10,hue:0, scale:1.08 }
   };
 
   function show(name) {
@@ -516,6 +518,175 @@
       ctx.save();
       ctx.translate(this.x,this.y);
       const pal=fighterPalette(this.type);
+
+
+      // ピラニア：リヴァイアサンさん
+      if(this.type==='piranha'){
+        if(this.face<0) ctx.scale(-1,1);
+        if(this.flash>0) ctx.globalAlpha=.55;
+
+        // 胴体
+        ctx.fillStyle='#677d89';
+        ctx.beginPath();
+        ctx.ellipse(0,8,43,28,0,0,Math.PI*2);
+        ctx.fill();
+
+        // 腹側
+        ctx.fillStyle='#a8bac2';
+        ctx.beginPath();
+        ctx.ellipse(4,16,29,15,0,0,Math.PI*2);
+        ctx.fill();
+
+        // 尾びれ
+        ctx.fillStyle='#566b76';
+        ctx.beginPath();
+        ctx.moveTo(-37,6);
+        ctx.lineTo(-67,-16);
+        ctx.lineTo(-58,7);
+        ctx.lineTo(-68,29);
+        ctx.closePath();
+        ctx.fill();
+
+        // 背びれ
+        ctx.fillStyle='#4d626c';
+        ctx.beginPath();
+        ctx.moveTo(-8,-17);
+        ctx.lineTo(8,-39);
+        ctx.lineTo(18,-15);
+        ctx.closePath();
+        ctx.fill();
+
+        // 目
+        ctx.fillStyle='#fff';
+        ctx.beginPath();
+        ctx.arc(22,-4,7,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle='#111';
+        ctx.beginPath();
+        ctx.arc(24,-4,3,0,Math.PI*2);
+        ctx.fill();
+
+        // ピラニアらしい口と歯
+        ctx.fillStyle='#26343b';
+        ctx.beginPath();
+        ctx.moveTo(35,7);
+        ctx.lineTo(56,-2);
+        ctx.lineTo(53,15);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle='#fff';
+        for(let i=0;i<4;i++){
+          ctx.beginPath();
+          ctx.moveTo(39+i*4,4);
+          ctx.lineTo(41+i*4,9);
+          ctx.lineTo(43+i*4,4);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // 通常パンチ/キック相当：体当たりや尾びれ攻撃に見える簡易表現
+        if(this.attack==='punch'){
+          ctx.strokeStyle='#c8e3ec';
+          ctx.lineWidth=6;
+          ctx.beginPath();
+          ctx.moveTo(34,2); ctx.lineTo(62,-8);
+          ctx.stroke();
+        }
+        if(this.attack==='kick'){
+          ctx.strokeStyle='#536b76';
+          ctx.lineWidth=10;
+          ctx.beginPath();
+          ctx.moveTo(-35,8); ctx.lineTo(-72,6);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+        return;
+      }
+
+      // ザリガニ：アスモデウスさん
+      if(this.type==='crayfish'){
+        if(this.face<0) ctx.scale(-1,1);
+        if(this.flash>0) ctx.globalAlpha=.55;
+
+        // 胴体
+        ctx.fillStyle='#9b3f2f';
+        ctx.beginPath();
+        ctx.ellipse(-2,16,28,34,0,0,Math.PI*2);
+        ctx.fill();
+
+        // 頭
+        ctx.fillStyle='#b64d37';
+        ctx.beginPath();
+        ctx.ellipse(3,-10,29,24,0,0,Math.PI*2);
+        ctx.fill();
+
+        // 尻尾の節
+        ctx.fillStyle='#873427';
+        for(let i=0;i<3;i++){
+          ctx.beginPath();
+          ctx.ellipse(-8-i*10,43+i*7,18-i*2,10,0,0,Math.PI*2);
+          ctx.fill();
+        }
+
+        // 目
+        ctx.fillStyle='#fff';
+        ctx.beginPath();
+        ctx.arc(14,-23,5.5,0,Math.PI*2);
+        ctx.arc(-3,-23,5.5,0,Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle='#111';
+        ctx.beginPath();
+        ctx.arc(15,-23,2.5,0,Math.PI*2);
+        ctx.arc(-2,-23,2.5,0,Math.PI*2);
+        ctx.fill();
+
+        // ハサミ
+        const clawExtend=this.attack==='punch'?20:0;
+        ctx.strokeStyle='#a94331';
+        ctx.lineWidth=10;
+        ctx.lineCap='round';
+
+        ctx.beginPath();
+        ctx.moveTo(18,0); ctx.lineTo(42+clawExtend,8);
+        ctx.moveTo(-18,2); ctx.lineTo(-39,13);
+        ctx.stroke();
+
+        ctx.fillStyle='#c95b40';
+        ctx.beginPath();
+        ctx.ellipse(48+clawExtend,7,18,13,.15,0,Math.PI*2);
+        ctx.ellipse(-45,13,17,12,-.15,0,Math.PI*2);
+        ctx.fill();
+
+        // ハサミ割れ
+        ctx.strokeStyle='#793025';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.moveTo(48+clawExtend,-4); ctx.lineTo(50+clawExtend,18);
+        ctx.moveTo(-45,2); ctx.lineTo(-45,23);
+        ctx.stroke();
+
+        // 触角
+        ctx.strokeStyle='#c7674f';
+        ctx.lineWidth=2.5;
+        ctx.beginPath();
+        ctx.moveTo(12,-28); ctx.quadraticCurveTo(39,-48,58,-39);
+        ctx.moveTo(-2,-28); ctx.quadraticCurveTo(-31,-49,-51,-37);
+        ctx.stroke();
+
+        // キック相当：尾を振る
+        if(this.attack==='kick'){
+          ctx.strokeStyle='#7a2f24';
+          ctx.lineWidth=12;
+          ctx.beginPath();
+          ctx.moveTo(-8,43); ctx.lineTo(-48,56);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+        return;
+      }
 
       // ウリエルさんは少し大柄
       if(this.bodyScale && this.bodyScale!==1) ctx.scale(this.bodyScale,this.bodyScale);
@@ -1821,6 +1992,24 @@
       pullerForEscape.tonguePullTarget===f && pullerForEscape.tonguePullTimer>0;
 
     if(!canTongueEscape && (f.stun>0 || f.attackT>0)) return;
+
+    // 非カエル種の舌ボタンは、それぞれ固有の近接攻撃に置換
+    if(kind==='tongue' && f.type==='piranha'){
+      f.attack='punch'; f.attackT=.30;
+      const other=f.isPlayer?enemy:player;
+      const dist=Math.hypot(other.x-f.x,other.y-f.y);
+      if(dist<82) setTimeout(()=>damageHit(f,other,4.4*f.damageMul,80*f.face,-5),95);
+      return;
+    }
+
+    if(kind==='tongue' && f.type==='crayfish'){
+      f.attack='punch'; f.attackT=.38;
+      const other=f.isPlayer?enemy:player;
+      const dist=Math.hypot(other.x-f.x,other.y-f.y);
+      if(dist<92) setTimeout(()=>damageHit(f,other,5.2*f.damageMul,95*f.face,-8),120);
+      return;
+    }
+
     const other = f.isPlayer ? enemy : player;
     const dir=f.face;
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
