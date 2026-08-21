@@ -80,6 +80,12 @@
       this.radius=35; this.hp=100; this.face = isPlayer ? 1 : -1;
       this.attack=null; this.attackT=0; this.stun=0; this.guard=false; this.tongueT=0;
       this.flash=0;
+
+      // 舌システム
+      this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
+      this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
+      this.throwState=null;         // 舌投げ中の状態
+      this.spinAngle=0;
     }
     update(dt) {
       if (this.stun>0) this.stun-=dt;
@@ -90,16 +96,66 @@
       }
       if (this.tongueT>0) this.tongueT-=dt;
 
+      // 自分が相手を舌で引っ張っている間
+      if(this.tonguePullTimer>0){
+        this.tonguePullTimer-=dt;
+        if(this.tonguePullTimer<=0){
+          this.tonguePullTimer=0;
+          this.tonguePullTarget=null;
+        }
+      }
+
       this.vy += this.sink * dt;
       this.vx *= Math.pow(.35, dt);
       this.vy *= Math.pow(.5, dt);
 
+      // 舌で引かれている側は、舌の持ち主へゆっくり吸い寄せられる
+      const puller = this.isPlayer ? enemy : player;
+      if(puller && puller.tonguePullTarget===this && puller.tonguePullTimer>0 && !this.throwState){
+        const dx = puller.x - this.x;
+        const dy = puller.y - this.y;
+        this.vx += dx * 8.5 * dt;
+        this.vy += dy * 8.5 * dt;
+        this.stun = Math.max(this.stun, .08);
+      }
+
+      if(this.throwState){
+        this.spinAngle += this.throwState.spinSpeed * dt;
+      } else {
+        this.spinAngle *= Math.pow(.03, dt);
+      }
+
       this.x += this.vx * dt;
       this.y += this.vy * dt;
       const minY=78, maxY=innerHeight-65;
+
+      // 舌投げで壁・床に当たった瞬間に追加ダメージ
+      if(this.throwState){
+        const hitWall = this.x<=45 || this.x>=innerWidth-45;
+        const hitFloor = this.y>=maxY;
+        if(hitWall || hitFloor){
+          const owner = this.throwState.owner;
+          this.x=Math.max(45,Math.min(innerWidth-45,this.x));
+          this.y=Math.max(minY,Math.min(maxY,this.y));
+          this.hp=Math.max(0,this.hp-7.0);
+          this.vx *= -.18;
+          this.vy = hitFloor ? -95 : this.vy*.25;
+          this.stun=.42;
+          spawnImpact(this.x,this.y,'hit');
+          if(owner && owner.isPlayer){
+            comboHits++;
+            comboTimer=1.15;
+            comboEl.textContent=`${comboHits} HIT!`;
+          }
+          this.throwState=null;
+          updateHud();
+          if(this.hp<=0) endGame(owner ? owner.isPlayer : false);
+        }
+      }
+
       this.x=Math.max(45,Math.min(innerWidth-45,this.x));
       this.y=Math.max(minY,Math.min(maxY,this.y));
-      if(this.y===maxY) this.vy=Math.min(0,this.vy);
+      if(this.y===maxY && !this.throwState) this.vy=Math.min(0,this.vy);
 
       const other = this.isPlayer ? enemy : player;
       if (other) this.face = other.x >= this.x ? 1 : -1;
@@ -118,6 +174,7 @@
     draw() {
       ctx.save();
       ctx.translate(this.x,this.y);
+      if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
       if(this.face<0) ctx.scale(-1,1);
       if(this.flash>0) ctx.globalAlpha=.55;
 
@@ -231,8 +288,8 @@
         ctx.restore();
       }
 
-      if(this.tongueT>0){
-        const target = this.isPlayer ? enemy : player;
+      if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0)){
+        const target = this.tonguePullTarget || (this.isPlayer ? enemy : player);
         let len = Math.min(this.tongueRange, Math.abs(target.x-this.x));
         ctx.strokeStyle='#ff718e';
         ctx.lineWidth=8;
@@ -287,14 +344,58 @@
         setTimeout(()=>damageHit(f,other,5.2*f.damageMul,175*dir,-28),80);
       }
     } else if(kind==='tongue'){
-      f.tongueT=.22; f.attack='tongue'; f.attackT=.3;
-      if(Math.abs(other.x-f.x)<f.tongueRange && Math.abs(other.y-f.y)<75 && Math.sign(other.x-f.x)===dir){
+      // 引き寄せ中にもう一度舌を押したら「舌投げ」
+      if(f.tonguePullTarget && f.tonguePullTimer>0){
+        const target=f.tonguePullTarget;
+        f.tongueT=.18;
+        f.attack='tongue';
+        f.attackT=.28;
+
+        // 下入力が強ければ床へ、それ以外は向いている壁へ叩きつける
+        const wantsFloor = f.isPlayer && input.y>.35;
+        const throwDir = f.face;
+
+        target.throwState={
+          owner:f,
+          spinSpeed: throwDir*15
+        };
+        target.spinAngle=0;
+
+        if(wantsFloor){
+          target.vx = throwDir*150;
+          target.vy = 620;
+        }else{
+          target.vx = throwDir*720;
+          target.vy = 90;
+        }
+
+        target.stun=.55;
+        f.tonguePullTarget=null;
+        f.tonguePullTimer=0;
+        spawnImpact(target.x,target.y,'hit');
+        return;
+      }
+
+      // 通常の舌。コンボ中でなくても小ダメージ＋引き寄せ。
+      f.tongueT=.22;
+      f.attack='tongue';
+      f.attackT=.3;
+
+      if(Math.abs(other.x-f.x)<f.tongueRange && Math.abs(other.y-f.y)<82 && Math.sign(other.x-f.x)===dir){
         setTimeout(()=>{
           if(!other.guard){
-            other.vx += -dir*250;
-            other.vy += (f.y-other.y)*2.0;
-            other.stun=.2;
-            damageHit(f,other,1.4*f.damageMul,0,0);
+            // まず小ダメージ
+            damageHit(f,other,1.8*f.damageMul,0,0);
+
+            // 一定時間、相手を自分へ引き寄せる
+            f.tonguePullTarget=other;
+            f.tonguePullTimer=.72;
+            other.stun=Math.max(other.stun,.18);
+
+            const dx=f.x-other.x;
+            const dy=f.y-other.y;
+            other.vx += dx*1.8;
+            other.vy += dy*1.8;
           } else {
             spawnImpact(other.x,other.y,'guard');
           }
@@ -371,7 +472,11 @@
     if(enemy.attackT<=0){
       if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*dt; }
       else if(Math.random()<dt*.8) attack(enemy,Math.random()<.62?'punch':'kick');
-      if(dist>120&&dist<enemy.tongueRange&&Math.random()<dt*.28) attack(enemy,'tongue');
+      if(enemy.tonguePullTarget && enemy.tonguePullTimer>0 && Math.random()<dt*2.2){
+        attack(enemy,'tongue');
+      } else if(dist>120&&dist<enemy.tongueRange&&Math.random()<dt*.28) {
+        attack(enemy,'tongue');
+      }
       enemy.guard = dist<90 && Math.random()<dt*.25;
     }
   }
