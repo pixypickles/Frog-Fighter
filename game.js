@@ -513,29 +513,31 @@
       if(this.type==='purple'){
         ctx.save();
 
-        // 右上へずらし、少し斜めに傾ける
+        // 傾きを反対向きへ修正
         ctx.translate(31,-40);
-        ctx.rotate(-0.48);
+        ctx.rotate(0.48);
 
         ctx.strokeStyle='#8b2f72';
         ctx.lineWidth=2.5;
         ctx.lineJoin='round';
 
-        // 左の輪
+        // 左の輪：丸ではなく先端を三角っぽく尖らせる
         ctx.fillStyle='#ff86c8';
         ctx.beginPath();
-        ctx.moveTo(-3,1);
-        ctx.quadraticCurveTo(-24,-13,-27,2);
-        ctx.quadraticCurveTo(-24,16,-4,7);
+        ctx.moveTo(-3,2);
+        ctx.lineTo(-29,-12);
+        ctx.lineTo(-25,6);
+        ctx.lineTo(-5,8);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // 右の輪
+        // 右の輪：こちらも三角寄り
         ctx.beginPath();
-        ctx.moveTo(3,1);
-        ctx.quadraticCurveTo(24,-13,28,3);
-        ctx.quadraticCurveTo(24,17,4,7);
+        ctx.moveTo(3,2);
+        ctx.lineTo(29,-12);
+        ctx.lineTo(25,6);
+        ctx.lineTo(5,8);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -547,19 +549,24 @@
         ctx.fill();
         ctx.stroke();
 
-        // 垂れたリボンの端 2本
+        // 垂れたリボン端も三角カットに
         ctx.fillStyle='#f06fba';
+
         ctx.beginPath();
         ctx.moveTo(-3,9);
-        ctx.lineTo(-13,24);
-        ctx.lineTo(-3,20);
+        ctx.lineTo(-15,26);
+        ctx.lineTo(-7,22);
+        ctx.lineTo(-2,29);
         ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
+        ctx.beginPath();
         ctx.moveTo(3,9);
-        ctx.lineTo(12,24);
-        ctx.lineTo(4,20);
+        ctx.lineTo(15,26);
+        ctx.lineTo(7,22);
+        ctx.lineTo(2,29);
         ctx.closePath();
-
         ctx.fill();
         ctx.stroke();
 
