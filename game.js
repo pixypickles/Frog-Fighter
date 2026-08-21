@@ -20,6 +20,7 @@
   let hitRings = [];
   let guardWaves = [];
   let aquaTornadoes = [];
+  let siltClouds = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -874,7 +875,9 @@
     hitRings=[];
     guardWaves=[];
     aquaTornadoes=[];
+    siltClouds=[];
     aquaTornadoes=[];
+    siltClouds=[];
 
     if(practiceExitButton) practiceExitButton.hidden=false;
 
@@ -946,8 +949,8 @@
     const startX=f.x+dir*35;
     const startY=f.y-6;
     const length=Math.max(innerWidth,innerHeight)*1.05;
-    const dx=dir*.68;
-    const dy=-.74;
+    const dx=dir*.76;
+    const dy=-.65;
 
     aquaTornadoes.push({
       owner:f,
@@ -986,8 +989,8 @@
     const startX=f.x+dir*28;
     const startY=f.y+42;
     const length=Math.max(innerWidth,innerHeight)*1.05;
-    const dx=dir*.68;
-    const dy=.74;
+    const dx=dir*.76;
+    const dy=.65;
 
     aquaTornadoes.push({
       owner:f,
@@ -1000,7 +1003,8 @@
       width:30,
       hit:false,
       direction:'down',
-      source:'foot'
+      source:'foot',
+      siltSpawned:false
     });
 
     comboEl.textContent='アクアストリーム!';
@@ -1465,15 +1469,36 @@
         const owner=t.owner;
         if(owner){
           const length=Math.max(innerWidth,innerHeight)*1.05;
-          const dx=owner.face*.68;
+          const dx=owner.face*.76;
           const downward=t.direction==='down';
-          const dy=downward?.74:-.74;
+          const dy=downward?.65:-.65;
 
           t.startX=owner.x+owner.face*(t.source==='foot'?28:35);
           t.startY=owner.y+(t.source==='foot'?42:-6);
           t.endX=t.startX+dx*length;
           t.endY=t.startY+dy*length;
           t.dir=owner.face;
+        }
+
+        // 下向き水流が底に当たった場所だけ、軽い土煙を出す。
+        // 円を大量生成せず、1つの濁り雲を短時間描くだけなので軽量。
+        if(t.direction==='down' && !t.siltSpawned){
+          const floorY=innerHeight-28;
+          const segDy=t.endY-t.startY;
+          if(segDy>0 && t.startY<floorY && t.endY>=floorY){
+            const u=(floorY-t.startY)/segDy;
+            const floorX=t.startX+(t.endX-t.startX)*u;
+            if(floorX>-40 && floorX<innerWidth+40){
+              t.siltSpawned=true;
+              siltClouds.push({
+                x:floorX,
+                y:floorY,
+                t:.62,
+                life:.62,
+                radius:22
+              });
+            }
+          }
         }
 
         const target=owner && owner.isPlayer ? enemy : player;
@@ -1492,7 +1517,35 @@
       });
       aquaTornadoes=aquaTornadoes.filter(t=>t.t>0);
 
-      guardWaves.forEach(w=>{
+      siltClouds.forEach(s=>{
+        s.t-=dt;
+        s.radius+=34*dt;
+        s.y-=5*dt;
+      });
+      siltClouds=siltClouds.filter(s=>s.t>0);
+
+      siltClouds.forEach(s=>{
+      const a=Math.max(0,s.t/s.life);
+      ctx.save();
+
+      // 水が少し茶色く濁る程度。派手な土煙にはしない。
+      ctx.globalAlpha=.20*a;
+      ctx.fillStyle='#8a6848';
+      ctx.beginPath();
+      ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.globalAlpha=.13*a;
+      ctx.fillStyle='#b08a62';
+      ctx.beginPath();
+      ctx.ellipse(s.x-10,s.y-12,s.radius*.75,s.radius*.42,-.25,0,Math.PI*2);
+      ctx.ellipse(s.x+12,s.y-9,s.radius*.65,s.radius*.36,.2,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+    });
+
+    guardWaves.forEach(w=>{
         w.t-=dt;
         w.x += w.dir*285*dt;
         w.r += 42*dt;
