@@ -22,16 +22,19 @@
   let aquaTornadoes = [];
   let siltClouds = [];
   let catfishCharges = [];
+  let pressureBlades = [];
   let burstWaves = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
 
   const stats = {
-    green:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
-    blue:   { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 },
-    black:  { speed: 148, tongue: 225, damage: 1.22, sink: 9, hue: 0 },
-    purple: { speed: 174, tongue: 245, damage: 0.92, sink: 5, hue: 0 }
+    green:  { speed: 160, tongue: 210, damage: 1.00, defense:1.00, sink:7, hue:0, scale:1.00 },
+    blue:   { speed: 182, tongue: 260, damage: 0.88, defense:1.00, sink:5, hue:95, scale:1.00 },
+    black:  { speed: 148, tongue: 225, damage: 1.22, defense:1.00, sink:9, hue:0, scale:1.00 },
+    purple: { speed: 174, tongue: 245, damage: 0.92, defense:1.00, sink:5, hue:0, scale:1.00 },
+    yellow: { speed: 190, tongue: 225, damage: 0.92, defense:0.96, sink:4, hue:0, scale:1.00 },
+    orange: { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 }
   };
 
   function show(name) {
@@ -116,6 +119,16 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
 
+  function drawWhiteAura(x,y,rx,ry,intensity=1){
+    ctx.save();ctx.translate(x,y);ctx.globalCompositeOperation='lighter';
+    for(let i=0;i<4;i++){
+      ctx.globalAlpha=(.12+i*.07)*intensity;
+      ctx.fillStyle=i%2?'#ffffff':'#dffcff';
+      ctx.beginPath();ctx.ellipse(0,0,rx+i*4,ry+i*3,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawRedAura(x,y,rx,ry,intensity=1){
     ctx.save();ctx.translate(x,y);ctx.globalCompositeOperation='lighter';
     const pulse=.93+Math.sin(performance.now()/48)*.07;ctx.scale(pulse,pulse);
@@ -178,6 +191,18 @@
         eyeBump:'#a85ecb'
       };
     }
+    if(type==='yellow'){
+      return {
+        body:'#e7cf3f', limb:'#e7cf3f', light:'#f5e56b',
+        belly:'#fff08a', eyeBump:'#f1dc55'
+      };
+    }
+    if(type==='orange'){
+      return {
+        body:'#ef8b32', limb:'#ef8b32', light:'#ffad55',
+        belly:'#ffc477', eyeBump:'#f9a04a'
+      };
+    }
     if(type==='blue'){
       return {
         body:'#31aee8',
@@ -201,8 +226,9 @@
       const s = stats[type] || stats.green;
       this.x=x; this.y=y; this.vx=0; this.vy=0; this.isPlayer=isPlayer;
       this.type=type; this.speed=s.speed; this.tongueRange=s.tongue; this.damageMul=s.damage;
+      this.defense=s.defense||1; this.bodyScale=s.scale||1;
       this.sink=s.sink; this.hue=s.hue;
-      this.radius=35; this.hp=100; this.face = isPlayer ? 1 : -1;
+      this.radius=35*this.bodyScale; this.hp=100; this.face = isPlayer ? 1 : -1;
       this.attack=null; this.attackT=0; this.attackVariant='mid'; this.stun=0; this.guard=false; this.tongueT=0;
       this.flash=0;
       this.hurtFaceT=0;
@@ -227,6 +253,11 @@
       this.specialHitDone=false;
       this.chargeStartTime=0;
       this.chargePower=0;
+      this.healT=0;
+      this.counterT=0;
+      this.counterReady=false;
+      this.tackleArmedT=0;
+      this.tackleHit=false;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -244,6 +275,16 @@
     }
     update(dt) {
       if (this.stun>0) this.stun-=dt;
+      if(this.healT>0){
+        this.healT-=dt;
+        this.hp=Math.min(100,this.hp+3.2*dt);
+        if(this.isPlayer) updateHud();
+      }
+      if(this.counterT>0){
+        this.counterT-=dt;
+        if(this.counterT<=0) this.counterReady=false;
+      }
+      if(this.tackleArmedT>0) this.tackleArmedT-=dt;
       if (this.flash>0) this.flash-=dt;
       if (this.hurtFaceT>0) this.hurtFaceT-=dt;
       if (this.guardStartT>0) this.guardStartT-=dt;
@@ -334,6 +375,27 @@
             const last=this.luciferDiveHits===4;
             damageHit(this,other,(last?4.0:2.2)*this.damageMul,
                       (last?145:45)*this.face,last?105:35);
+          }
+        }
+      }
+
+      // ウリエルさん：前傾タックル。接触した相手を回転させて吹き飛ばす。
+      if(this.specialType==='urielTackle' && !this.tackleHit){
+        const other=this.isPlayer?enemy:player;
+        if(other){
+          const fx=this.x+this.face*34;
+          const d=Math.hypot(other.x-fx,other.y-this.y);
+          if(d<other.radius+this.radius*.78){
+            this.tackleHit=true;
+            damageHit(this,other,9.0*this.damageMul,285*this.face,-70);
+            other.throwState={owner:this,spinSpeed:this.face*12,endT:.62,noWallDamage:true};
+            other.spinAngle=0;
+            other.hurtFace='both'; other.hurtFaceT=.7;
+            setTimeout(()=>{
+              if(other && other.throwState && other.throwState.owner===this){
+                other.throwState=null;
+              }
+            },620);
           }
         }
       }
@@ -452,6 +514,11 @@
       ctx.translate(this.x,this.y);
       const pal=fighterPalette(this.type);
 
+      // ウリエルさんは少し大柄
+      if(this.bodyScale && this.bodyScale!==1) ctx.scale(this.bodyScale,this.bodyScale);
+
+      // ガーディアンタックル中は少し前傾
+      if(this.specialType==='urielTackle') ctx.rotate(this.face*.16);
 
       // ヘルラッシュ中は少し低い姿勢
       if(this.specialType==='hellRush' && this.specialT>.55){
@@ -750,6 +817,30 @@
         }else{
           drawRedAura(58,7,21,17,intensity);
         }
+      }
+
+      // ラファエルさん：回復中は小さな泡が身体の周囲を上昇
+      if(this.type==='yellow' && this.healT>0){
+        ctx.save();
+        ctx.strokeStyle='#d9fbff';
+        ctx.lineWidth=2;
+        ctx.globalAlpha=.65;
+        const tm=performance.now()/220;
+        for(let i=0;i<5;i++){
+          const bx=Math.sin(tm+i*1.7)*28;
+          const by=48-((tm*13+i*23)%100);
+          ctx.beginPath();ctx.arc(bx,by,3+(i%3),0,Math.PI*2);ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // ウリエルさん：カウンター構え/反撃の白いオーラ
+      if(this.type==='orange' && (this.counterReady || this.specialType==='whiteCounterHit')){
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=5;ctx.globalAlpha=.62;
+        ctx.beginPath();ctx.arc(0,18,48,0,Math.PI*2);ctx.stroke();
+        if(this.specialType==='whiteCounterHit') drawWhiteAura(58,7,20,16,1);
+        ctx.restore();
       }
 
       if(this.specialType==='ribbonWhip'){
@@ -1146,6 +1237,7 @@
     aquaTornadoes=[];
     siltClouds=[];
     catfishCharges=[];
+    pressureBlades=[];
     burstWaves=[];
     aquaTornadoes=[];
     siltClouds=[];
@@ -1525,6 +1617,94 @@
     return false;
   }
 
+
+  function specialPressureBlade(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
+    f.specialType='pressureBlade'; f.specialT=.42; f.attack='punch'; f.attackT=.42;
+    pressureBlades.push({
+      owner:f, x:f.x+f.face*52, y:f.y+2, vx:f.face*285,
+      t:1.35, life:1.35, hit:false
+    });
+    comboEl.textContent='水圧カッター!';
+    setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},650);
+    return true;
+  }
+
+  function specialHealingBubble(f){
+    if(gameOver || f.stun>0 || f.specialT>0 || f.healT>0) return false;
+    f.guard=false; f.specialType='healingBubble'; f.specialT=.55; f.healT=4.8;
+    comboEl.textContent='ヒーリングバブル!';
+    setTimeout(()=>{if(comboEl.textContent==='ヒーリングバブル!')comboEl.textContent='';},720);
+    return true;
+  }
+
+  function hasFullCircle(maxMs=900){
+    const now=performance.now();
+    const hist=input.commandHistory.filter(v=>now-v.time<=maxMs).map(v=>v.dir);
+    const cw=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    const ccw=['right','upRight','up','upLeft','left','downLeft','down','downRight'];
+    const match=seq=>{
+      for(let start=0;start<seq.length;start++){
+        let p=0;
+        for(const d of hist){
+          if(d===seq[(start+p)%8]) p++;
+          if(p>=7) return true;
+        }
+      }
+      return false;
+    };
+    return match(cw)||match(ccw);
+  }
+
+  function specialWhiteCounter(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.guard=false; f.attack=null; f.attackT=0;
+    f.specialType='whiteCounter'; f.specialT=1.15;
+    f.counterT=1.15; f.counterReady=true;
+    comboEl.textContent='ホワイトカウンター!';
+    setTimeout(()=>{if(comboEl.textContent==='ホワイトカウンター!')comboEl.textContent='';},720);
+    clearCommand();
+    return true;
+  }
+
+  function triggerWhiteCounter(f,attacker){
+    if(!f || !f.counterReady) return false;
+    f.counterReady=false; f.counterT=0;
+    f.specialType='whiteCounterHit'; f.specialT=.46;
+    f.attack='punch'; f.attackVariant='mid'; f.attackT=.46;
+    f.face=attacker && attacker.x<f.x ? -1 : 1;
+    if(attacker){
+      attacker.stun=Math.max(attacker.stun,.48);
+      attacker.attackT=Math.max(attacker.attackT,.48);
+      setTimeout(()=>{
+        if(gameOver)return;
+        damageHit(f,attacker,8.5*f.damageMul,210*f.face,-65,true);
+      },105);
+    }
+    comboEl.textContent='COUNTER!';
+    setTimeout(()=>{if(comboEl.textContent==='COUNTER!')comboEl.textContent='';},520);
+    return true;
+  }
+
+  function armUrielTackle(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.tackleArmedT=.8;
+    comboEl.textContent='TACKLE READY';
+    setTimeout(()=>{if(comboEl.textContent==='TACKLE READY')comboEl.textContent='';},420);
+    return true;
+  }
+
+  function specialUrielTackle(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.guard=false; f.tackleArmedT=0;
+    f.specialType='urielTackle'; f.specialT=.72;
+    f.attack='punch'; f.attackT=.72; f.tackleHit=false;
+    f.vx += f.face*430;
+    comboEl.textContent='ガーディアンタックル!';
+    setTimeout(()=>{if(comboEl.textContent==='ガーディアンタックル!')comboEl.textContent='';},720);
+    return true;
+  }
+
   function hasForwardForwardTap(f, windowMs=780){
     const now=performance.now();
     const taps=(input.forwardTapTimes||[]).filter(t=>now-t<=windowMs);
@@ -1571,6 +1751,18 @@
         input.forwardTapTimes=[]; clearCommand(); f.attackT=0; f.attack=null;
         return specialHellCrash(f);
       }
+    }
+
+    if(f.type==='yellow'){
+      const forward=f.face>0?'right':'left';
+      if(kind==='punch' && hasCommand(['down',forward],780)){
+        clearCommand();
+        return specialPressureBlade(f);
+      }
+    }
+
+    if(f.type==='orange' && kind==='punch' && f.tackleArmedT>0){
+      return specialUrielTackle(f);
     }
 
     return false;
@@ -1717,11 +1909,20 @@
     }
   }
 
-  function damageHit(attacker,target,dmg,kx,ky){
+  function damageHit(attacker,target,dmg,kx,ky,bypassCounter=false){
     if(gameOver) return;
 
+    // ウリエルさんのカウンター構え：打撃を無効化して白オーラ拳で反撃。
+    if(!bypassCounter && target && target.type==='orange' && target.counterReady){
+      spawnImpact(target.x,target.y,'guard');
+      triggerWhiteCounter(target,attacker);
+      return;
+    }
+
+    // 防御力。ウリエルさんは約22%軽減。
+    dmg /= (target.defense||1);
+
     // ガード直後の緩めの受付時間ならジャストガード。
-    // 攻撃側に少し長めの隙を作る。
     const justGuard = target.guard && target.guardStartT>0;
     target.hit(dmg,kx,ky);
     if(gameMode==='practice' && target===enemy) target.hp=999999;
@@ -1805,6 +2006,38 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          // ラファエルさん：後ろ＋ガード×2で徐々に回復
+          if(player.type==='yellow' && !player.throwState){
+            const now=performance.now();
+            const backNow=(player.face>0 && input.x<-.35)||(player.face<0 && input.x>.35);
+            input._raphaelGuardTimes=(input._raphaelGuardTimes||[]).filter(t=>now-t<720);
+            if(backNow){
+              input._raphaelGuardTimes.push(now);
+              if(input._raphaelGuardTimes.length>=2){
+                input._raphaelGuardTimes=[];
+                if(specialHealingBubble(player)){btn.classList.remove('pressed');return;}
+              }
+            }
+          }
+
+          // ウリエルさん：1回転＋ガードでカウンター構え
+          if(player.type==='orange' && !player.throwState && hasFullCircle(1000)){
+            if(specialWhiteCounter(player)){btn.classList.remove('pressed');return;}
+          }
+
+          // ウリエルさん：後ろ→前→ガードでタックルを準備。続けてパンチ。
+          if(player.type==='orange' && !player.throwState){
+            const back=player.face>0?'left':'right';
+            const forward=player.face>0?'right':'left';
+            if(hasCommand([back,forward],820)){
+              clearCommand();
+              armUrielTackle(player);
+              player.guard=true;
+              player.guardStartT=.18;
+              return;
+            }
+          }
+
           // リリスさん：後ろを入れたまま、または直前に後ろ入力してガード×2。
           if(player.type==='purple' && !player.throwState){
             const now=performance.now();
@@ -2018,6 +2251,24 @@
       player.update(dt);enemy.update(dt);
 
       // ガード3連打で出る小さな水の波。
+      pressureBlades.forEach(p=>{
+        p.t-=dt; p.x+=p.vx*dt;
+        const target=p.owner && p.owner.isPlayer ? enemy : player;
+        if(!p.hit && target){
+          const d=Math.hypot(target.x-p.x,target.y-p.y);
+          if(d<target.radius+28){
+            p.hit=true;
+            // ウリエルのカウンター構えは飛び道具を無効化。反撃は発生させない。
+            if(target.type==='orange' && target.counterReady){
+              spawnImpact(p.x,p.y,'guard');
+            }else{
+              damageHit(p.owner,target,5.2*p.owner.damageMul,105*p.owner.face,-18);
+            }
+          }
+        }
+      });
+      pressureBlades=pressureBlades.filter(p=>p.t>0 && !p.hit && p.x>-80 && p.x<innerWidth+80);
+
       aquaTornadoes.forEach(t=>{
         t.t-=dt;
 
@@ -2083,7 +2334,24 @@
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
 
-      burstWaves.forEach(b=>{b.t-=dt;});
+      // ラファエルさん：水を押し切って生まれる三日月状の水圧波
+    pressureBlades.forEach(p=>{
+      const a=Math.max(0,p.t/p.life);
+      ctx.save();ctx.translate(p.x,p.y);
+      if(p.vx<0)ctx.scale(-1,1);
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.72*a;
+      ctx.strokeStyle='#d8fbff';ctx.lineWidth=7;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(0,0,28,-1.05,1.05);ctx.stroke();
+      ctx.globalAlpha=.35*a;ctx.strokeStyle='#8deaff';ctx.lineWidth=14;
+      ctx.beginPath();ctx.arc(-3,0,26,-1.0,1.0);ctx.stroke();
+      // 水中らしく後ろに少量の泡
+      ctx.globalAlpha=.45*a;ctx.fillStyle='#e9ffff';
+      ctx.beginPath();ctx.arc(-25,-10,3,0,Math.PI*2);ctx.arc(-34,8,2,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    });
+
+    burstWaves.forEach(b=>{b.t-=dt;});
       burstWaves=burstWaves.filter(b=>b.t>0);
 
     siltClouds.forEach(s=>{

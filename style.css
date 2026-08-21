@@ -293,3 +293,6 @@ button{font:inherit;color:inherit}
 .char-card button{
   order:4;
 }
+
+.yellow-frog{filter:hue-rotate(45deg) saturate(1.35) brightness(1.12);}
+.orange-frog{filter:hue-rotate(20deg) saturate(1.55) brightness(1.08);}
