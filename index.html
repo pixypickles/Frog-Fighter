@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b6f7a" />
+  <title>カエルファイター</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="titleScreen" class="screen active">
+      <div class="bubble b1"></div><div class="bubble b2"></div><div class="bubble b3"></div>
+      <div class="title-frog" aria-hidden="true">🐸</div>
+      <h1>カエルファイター</h1>
+      <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
+      <p class="rotate-note">スマホを横持ちしてください</p>
+      <button id="desktopStart" class="soft-btn">PCで試す</button>
+    </section>
+
+    <section id="selectScreen" class="screen">
+      <h2>ファイターをえらぶ</h2>
+      <div class="fighter-grid">
+        <button class="fighter-card selected" data-fighter="green">
+          <span class="fighter-emoji">🐸</span>
+          <strong>みどり</strong>
+          <small>バランス型</small>
+        </button>
+        <button class="fighter-card" data-fighter="blue">
+          <span class="fighter-emoji blue-frog">🐸</span>
+          <strong>あお</strong>
+          <small>すばやい・舌が長い</small>
+        </button>
+      </div>
+      <button id="fightButton" class="primary-btn">FIGHT!</button>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen">
+      <canvas id="gameCanvas"></canvas>
+      <div id="hud">
+        <div class="hp-wrap left">
+          <span>PLAYER</span>
+          <div class="hp"><i id="playerHp"></i></div>
+        </div>
+        <div id="comboText"></div>
+        <div class="hp-wrap right">
+          <span>RIVAL</span>
+          <div class="hp"><i id="enemyHp"></i></div>
+        </div>
+      </div>
+
+      <div id="controls">
+        <div id="stickZone" class="stick-zone">
+          <div id="stickBase" class="stick-base">
+            <div id="stickKnob" class="stick-knob"></div>
+          </div>
+        </div>
+        <div class="buttons">
+          <button class="action punch" data-action="punch">パンチ</button>
+          <button class="action kick" data-action="kick">キック</button>
+          <button class="action tongue" data-action="tongue">舌</button>
+          <button class="action guard" data-action="guard">ガード</button>
+        </div>
+      </div>
+
+      <button id="restartButton" class="restart-btn" hidden>もう一度</button>
+    </section>
+
+    <div id="portraitOverlay">
+      <div>🐸</div>
+      <strong>スマホを横持ちしてください</strong>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
