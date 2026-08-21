@@ -2269,7 +2269,7 @@
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
 
-      // ガード3連打で出る小さな水の波。
+      // ラファエルさんの水圧カッター更新
       pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -2309,7 +2309,7 @@
         // 下向き水流が底に当たった場所だけ、軽い土煙を出す。
         // 円を大量生成せず、1つの濁り雲を短時間描くだけなので軽量。
         if(t.direction==='down' && !t.siltSpawned){
-          const floorY=canvas.height-42;
+          const floorY=innerHeight-35;
           const segDy=t.endY-t.startY;
           if(segDy>0 && t.startY<floorY && t.endY>=floorY){
             const u=(floorY-t.startY)/segDy;
@@ -2318,10 +2318,10 @@
               t.siltSpawned=true;
               siltClouds.push({
                 x:floorX,
-                y:floorY,
-                t:.85,
-                life:.85,
-                radius:28
+                y:floorY-2,
+                t:1.05,
+                life:1.05,
+                radius:32
               });
             }
           }
@@ -2352,66 +2352,6 @@
         }
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
-
-      // ラファエルさん：大きく、はっきり見える三日月型の水圧カッター
-    pressureBlades.forEach(p=>{
-      const a=Math.max(0,p.t/p.life);
-      const s=p.size||1;
-
-      ctx.save();
-      ctx.translate(p.x,p.y);
-      if(p.vx<0) ctx.scale(-1,1);
-      ctx.scale(s,s);
-
-      // 通常合成で輪郭をまず出す
-      ctx.globalAlpha=.95*a;
-      ctx.strokeStyle='rgba(235,255,255,.98)';
-      ctx.lineWidth=12;
-      ctx.lineCap='round';
-      ctx.beginPath();
-      ctx.arc(0,0,34,-1.18,1.18);
-      ctx.stroke();
-
-      // その上に発光
-      ctx.globalCompositeOperation='lighter';
-      ctx.globalAlpha=.45*a;
-      ctx.strokeStyle='#7fe8ff';
-      ctx.lineWidth=28;
-      ctx.beginPath();
-      ctx.arc(0,0,35,-1.2,1.2);
-      ctx.stroke();
-
-      // 内側の濃い水色ライン
-      ctx.globalAlpha=.9*a;
-      ctx.strokeStyle='#31cfff';
-      ctx.lineWidth=5;
-      ctx.beginPath();
-      ctx.arc(-3,0,26,-1.12,1.12);
-      ctx.stroke();
-
-      // 三日月の先端を尖らせる
-      ctx.globalAlpha=.95*a;
-      ctx.fillStyle='#f4ffff';
-      ctx.beginPath();
-      ctx.moveTo(18,-29);
-      ctx.lineTo(47,0);
-      ctx.lineTo(18,29);
-      ctx.closePath();
-      ctx.fill();
-
-      // 泡の軌跡
-      ctx.globalAlpha=.7*a;
-      ctx.fillStyle='#eaffff';
-      for(let i=0;i<5;i++){
-        const bx=-34-i*12;
-        const by=(i%2===0?-1:1)*(7+i*2);
-        ctx.beginPath();
-        ctx.arc(bx,by,3.2+(i%2),0,Math.PI*2);
-        ctx.fill();
-      }
-
-      ctx.restore();
-    });
 
     burstWaves.forEach(b=>{b.t-=dt;});
       burstWaves=burstWaves.filter(b=>b.t>0);
@@ -2451,13 +2391,72 @@
     drawBackground(dt);
     player.draw();enemy.draw();
 
+    // ラファエルさん：水圧カッターは必ず背景描画の「後」に描く
+    pressureBlades.forEach(p=>{
+      const a=Math.max(0,p.t/p.life);
+      const s=p.size||1;
+
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      if(p.vx<0)ctx.scale(-1,1);
+      ctx.scale(s,s);
+
+      // まず通常合成で白い本体を確実に見せる
+      ctx.globalAlpha=.98*a;
+      ctx.strokeStyle='#f2ffff';
+      ctx.lineWidth=12;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.arc(0,0,34,-1.18,1.18);
+      ctx.stroke();
+
+      // 三日月の先端
+      ctx.fillStyle='#f8ffff';
+      ctx.beginPath();
+      ctx.moveTo(17,-30);
+      ctx.lineTo(48,0);
+      ctx.lineTo(17,30);
+      ctx.closePath();
+      ctx.fill();
+
+      // 発光
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.48*a;
+      ctx.strokeStyle='#67ddff';
+      ctx.lineWidth=26;
+      ctx.beginPath();
+      ctx.arc(0,0,35,-1.20,1.20);
+      ctx.stroke();
+
+      // 内側の青い輪郭
+      ctx.globalAlpha=.88*a;
+      ctx.strokeStyle='#26bfe9';
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      ctx.arc(-3,0,25,-1.10,1.10);
+      ctx.stroke();
+
+      // 泡の軌跡
+      ctx.globalAlpha=.72*a;
+      ctx.fillStyle='#eaffff';
+      for(let i=0;i<5;i++){
+        const bx=-34-i*12;
+        const by=(i%2===0?-1:1)*(7+i*2);
+        ctx.beginPath();
+        ctx.arc(bx,by,3.2+(i%2),0,Math.PI*2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    });
+
     burstWaves.forEach(b=>{
       const a=Math.max(0,b.t/b.life);
       const progress=1-a;
       const rr=b.radius+(b.max-b.radius)*progress;
       ctx.save();ctx.globalCompositeOperation='lighter';
       ctx.globalAlpha=.58*a;ctx.strokeStyle='#ff3447';ctx.lineWidth=8;ctx.beginPath();ctx.arc(b.x,b.y,rr,0,Math.PI*2);ctx.stroke();
-      ctx.globalAlpha=.22*a;ctx.strokeStyle='#ff9a59';ctx.lineWidth=18;ctx.beginPath();ctx.arc(b.x,b.y,rr*.72,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=.28*a;ctx.strokeStyle='#ff9a59';ctx.lineWidth=18;ctx.beginPath();ctx.arc(b.x,b.y,rr*.72,0,Math.PI*2);ctx.stroke();
       ctx.restore();
     });
 
@@ -2533,7 +2532,7 @@
     siltClouds.forEach(s=>{
       const a=Math.max(0,s.t/s.life);
       ctx.save();
-      ctx.globalAlpha=.34*a;
+      ctx.globalAlpha=.42*a;
       ctx.fillStyle='#8a6848';
       ctx.beginPath();
       ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
