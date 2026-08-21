@@ -3151,7 +3151,56 @@
     });
   }
 
-  function drawBackground(dt){
+  function separateBattleFighters(a,b){
+    // 表示・描画処理とは完全に独立した座標補正だけ。
+    if(!a || !b) return;
+    if(!Number.isFinite(a.x) || !Number.isFinite(a.y) ||
+       !Number.isFinite(b.x) || !Number.isFinite(b.y)) return;
+
+    // 舌投げなど、意図的に重なる演出中は何もしない。
+    if(a.throwState || b.throwState) return;
+
+    const ar=Number.isFinite(a.radius) ? a.radius : 35;
+    const br=Number.isFinite(b.radius) ? b.radius : 35;
+
+    const dx=b.x-a.x;
+    const dy=b.y-a.y;
+
+    // 上下差が大きい場合は水中ですれ違える。
+    const verticalLimit=(ar+br)*0.62;
+    if(Math.abs(dy)>verticalLimit) return;
+
+    // 横方向の最低距離。見た目より少し柔らかめ。
+    const minX=(ar+br)*0.76;
+    const absDx=Math.abs(dx);
+    if(absDx>=minX) return;
+
+    // 完全に同じXなら、PLAYERを左・RIVALを右に分ける。
+    const dir=absDx<0.001 ? 1 : Math.sign(dx);
+    const overlap=minX-absDx;
+
+    // 一気に弾かず、1フレームで少しずつ押し分ける。
+    const push=Math.min(overlap*.52,8);
+
+    a.x-=dir*push;
+    b.x+=dir*push;
+
+    // 互いに突っ込み続けて再び重なるのを少し抑える。
+    if(Number.isFinite(a.vx) && Number.isFinite(b.vx)){
+      const approaching=(b.vx-a.vx)*dir<0;
+      if(approaching){
+        a.vx*=.72;
+        b.vx*=.72;
+      }
+    }
+
+    // 画面外へ押し出さない。
+    const margin=42;
+    a.x=Math.max(margin,Math.min(innerWidth-margin,a.x));
+    b.x=Math.max(margin,Math.min(innerWidth-margin,b.x));
+  }
+
+function drawBackground(dt){
     const themes=[
       {top:'#42c7d6',mid:'#10849a',bottom:'#075469',floor:'#075047',plant:'#16855f',shaft:'rgba(255,255,220,.07)'},
       {top:'#56b78f',mid:'#29786f',bottom:'#174f50',floor:'#3e5438',plant:'#718347',shaft:'rgba(255,245,190,.06)'},
@@ -3219,6 +3268,11 @@
       }
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
+
+      // v6.5: フリー対戦／ストーリーだけ、上下位置が近い時に横へ押し分ける。
+      if(gameMode==='battle' || gameMode==='story'){
+        separateBattleFighters(player,enemy);
+      }
 
 
 
