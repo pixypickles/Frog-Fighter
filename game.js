@@ -18,8 +18,17 @@
   const guardMiniTimeEl=document.getElementById('guardMiniTime');
   const guardMiniScoreEl=document.getElementById('guardMiniScore');
   const guardMiniMissEl=document.getElementById('guardMiniMiss');
+  const opponentSelect=document.getElementById('opponentSelect');
+  const storyHud=document.getElementById('storyHud');
 
   let selectedFighter = 'green';
+  let selectedOpponent = 'blue';
+  let stageTheme=0;
+  let storyQueue=[];
+  let storyFightIndex=0;
+  let storyLosses=0;
+  let storyWins=0;
+  let storyFinished=false;
   let running = false;
   let last = performance.now();
   let bubbles = [];
@@ -52,7 +61,8 @@
     yellow:  { speed: 190, tongue: 225, damage: 0.92, defense:0.96, sink:4, hue:0, scale:1.00 },
     orange:  { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 },
     piranha: { speed: 198, tongue: 0,   damage: 1.08, defense:0.90, sink:3, hue:0, scale:0.95 },
-    crayfish:{ speed: 138, tongue: 0,   damage: 1.18, defense:1.20, sink:10,hue:0, scale:1.08 }
+    crayfish:{ speed: 138, tongue: 0,   damage: 1.18, defense:1.20, sink:10,hue:0, scale:1.08 },
+    beelzebub:{speed: 158, tongue: 275, damage: 1.28, defense:1.22, sink:8, hue:0, scale:1.13}
   };
 
   function show(name) {
@@ -85,11 +95,24 @@
     });
   });
 
+  if(opponentSelect){
+    opponentSelect.value=selectedOpponent;
+    opponentSelect.addEventListener('change',()=>{selectedOpponent=opponentSelect.value;});
+  }
+
   document.getElementById('fightButton').onclick = () => {
+    selectedOpponent=opponentSelect ? opponentSelect.value : selectedOpponent;
     show('game');
     resize();
-    startGame();
+    startGame('free');
   };
+
+  const storyButton=document.getElementById('storyButton');
+  if(storyButton){
+    storyButton.onclick=()=>{
+      startStoryMode();
+    };
+  }
 
   const minigameBtn=document.getElementById('minigameBtn');
   if(minigameBtn){
@@ -136,6 +159,7 @@
       e.stopPropagation();
 
       gameMode='battle';
+      if(storyHud) storyHud.hidden=true;
       leafMiniActive=false;
       guardMiniActive=false;
       if(leafMiniHud) leafMiniHud.hidden=true;
@@ -152,7 +176,17 @@
     if(gameMode==='practice') startPractice();
     else if(gameMode==='leafMini') startLeafMiniGame();
     else if(gameMode==='guardMini') startGuardMiniGame();
-    else startGame();
+    else if(gameMode==='story'){
+      if(storyFinished){
+        if(storyHud) storyHud.hidden=true;
+        gameMode='battle';
+        restartButton.hidden=true;
+        restartButton.textContent='もう一度';
+        show('select');
+      }else{
+        continueStory();
+      }
+    }else startGame('free');
   };
 
   function resize() {
@@ -234,6 +268,12 @@
         light:'#b66bd8',
         belly:'#c98ae6',
         eyeBump:'#a85ecb'
+      };
+    }
+    if(type==='beelzebub'){
+      return {
+        body:'#24162e', limb:'#24162e', light:'#5e356d',
+        belly:'#624772', eyeBump:'#40264b'
       };
     }
     if(type==='yellow'){
@@ -1739,21 +1779,94 @@
   }
 
 
-  function startGame() {
-    gameMode='battle';
+  const playableTypes=['green','blue','black','purple','yellow','orange','piranha','crayfish'];
+
+  function fighterDisplayName(type){
+    return {
+      green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
+      purple:'リリスさん', yellow:'ラファエルさん', orange:'ウリエルさん',
+      piranha:'リヴァイアさん', crayfish:'アスモデウスさん',
+      beelzebub:'ベルゼブブさん'
+    }[type]||type;
+  }
+
+  function resetBattleEffects(){
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
+    siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
+    leafTargets=[]; guardTargets=[];
+  }
+
+  function startGame(mode='free', enemyType=null) {
+    gameMode=mode==='story'?'story':'battle';
     if(practiceLabel) practiceLabel.style.display='none';
     if(practiceExitButton) practiceExitButton.hidden=true;
-    gameOver=false; restartButton.hidden=true; comboHits=0; comboTimer=0; comboEl.textContent='';
-    player = new Fighter(innerWidth*.28, innerHeight*.52, true, selectedFighter);
-    enemy = new Fighter(innerWidth*.72, innerHeight*.48, false, 'green');
+    if(leafMiniHud) leafMiniHud.hidden=true;
+    if(guardMiniHud) guardMiniHud.hidden=true;
+    leafMiniActive=false; guardMiniActive=false;
+
+    gameOver=false;
+    restartButton.hidden=true;
+    restartButton.textContent='もう一度';
+    comboHits=0; comboTimer=0; comboEl.textContent='';
+
+    const rivalType=enemyType || selectedOpponent || 'blue';
+    player=new Fighter(innerWidth*.28,innerHeight*.52,true,selectedFighter);
+    enemy=new Fighter(innerWidth*.72,innerHeight*.48,false,rivalType);
     enemy.hp=100;
-    bubbles = Array.from({length:28}, () => ({
-      x:Math.random()*innerWidth, y:Math.random()*innerHeight, r:2+Math.random()*6, s:10+Math.random()*26
+    enemy.sameCharacter=(rivalType===selectedFighter);
+
+    bubbles=Array.from({length:28},()=>({
+      x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:2+Math.random()*6,s:10+Math.random()*26
     }));
-    particles=[];
-    hitRings=[];
-    guardWaves=[];
+    resetBattleEffects();
+
+    if(gameMode==='story'){
+      if(storyHud){
+        storyHud.hidden=false;
+        const total=storyQueue.length;
+        storyHud.textContent=`STORY ${storyFightIndex+1}/${total}　勝${storyWins} 敗${storyLosses}/3　VS ${fighterDisplayName(rivalType)}`;
+      }
+    }else{
+      if(storyHud) storyHud.hidden=true;
+      stageTheme=0;
+    }
+
     running=true; last=performance.now();
+    updateHud();
+  }
+
+  function startStoryMode(){
+    storyQueue=playableTypes.filter(t=>t!==selectedFighter);
+    storyQueue.push('beelzebub');
+    storyFightIndex=0;
+    storyLosses=0;
+    storyWins=0;
+    storyFinished=false;
+    stageTheme=0;
+
+    show('game');
+    resize();
+    startGame('story',storyQueue[0]);
+  }
+
+  function continueStory(){
+    if(storyFinished) return;
+
+    storyFightIndex++;
+    if(storyFightIndex>=storyQueue.length){
+      storyFinished=true;
+      gameOver=true;
+      comboEl.textContent=`STORY CLEAR!　${storyWins}勝 ${storyLosses}敗`;
+      restartButton.hidden=false;
+      restartButton.textContent='キャラ選択へ';
+      return;
+    }
+
+    // 3戦ごとに背景を変更。ラスボスは専用の暗い水域。
+    const nextType=storyQueue[storyFightIndex];
+    stageTheme=nextType==='beelzebub' ? 3 : Math.min(2,Math.floor(storyFightIndex/3));
+    startGame('story',nextType);
   }
 
 
@@ -2608,8 +2721,37 @@
 
   function endGame(playerWon){
     if(gameMode==='practice' || gameMode==='leafMini' || gameMode==='guardMini') return;
+
     gameOver=true; running=true;
+
+    if(gameMode==='story'){
+      if(playerWon) storyWins++;
+      else storyLosses++;
+
+      if(!playerWon && storyLosses>=4){
+        storyFinished=true;
+        comboEl.textContent=`GAME OVER　${storyWins}勝 ${storyLosses}敗`;
+        restartButton.textContent='キャラ選択へ';
+      }else if(storyFightIndex>=storyQueue.length-1){
+        storyFinished=true;
+        comboEl.textContent=playerWon
+          ? `STORY CLEAR!　${storyWins}勝 ${storyLosses}敗`
+          : `STORY END　${storyWins}勝 ${storyLosses}敗`;
+        restartButton.textContent='キャラ選択へ';
+      }else{
+        comboEl.textContent=playerWon ? 'YOU WIN!　次の相手へ' : `YOU LOSE　残り猶予 ${3-storyLosses}`;
+        restartButton.textContent='次の相手';
+      }
+
+      if(storyHud){
+        storyHud.textContent=`STORY ${storyFightIndex+1}/${storyQueue.length}　勝${storyWins} 敗${storyLosses}/3`;
+      }
+      restartButton.hidden=false;
+      return;
+    }
+
     comboEl.textContent = playerWon ? 'YOU WIN!' : 'YOU LOSE';
+    restartButton.textContent='もう一度';
     restartButton.hidden=false;
   }
 
@@ -2885,21 +3027,58 @@
   }
 
   function drawBackground(dt){
-    const g=ctx.createLinearGradient(0,0,0,innerHeight);
-    g.addColorStop(0,'#42c7d6');g.addColorStop(.52,'#10849a');g.addColorStop(1,'#075469');
-    ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);
+    const themes=[
+      {top:'#42c7d6',mid:'#10849a',bottom:'#075469',floor:'#075047',plant:'#16855f',shaft:'rgba(255,255,220,.07)'},
+      {top:'#56b78f',mid:'#29786f',bottom:'#174f50',floor:'#3e5438',plant:'#718347',shaft:'rgba(255,245,190,.06)'},
+      {top:'#5a84a3',mid:'#345970',bottom:'#243d50',floor:'#3b4043',plant:'#596b67',shaft:'rgba(200,235,255,.055)'},
+      {top:'#34254a',mid:'#201d3b',bottom:'#11182d',floor:'#201826',plant:'#493151',shaft:'rgba(180,120,220,.055)'}
+    ];
+    const th=themes[Math.max(0,Math.min(themes.length-1,stageTheme||0))];
 
-    // light shafts
-    ctx.fillStyle='rgba(255,255,220,.07)';
-    ctx.beginPath();ctx.moveTo(innerWidth*.15,0);ctx.lineTo(innerWidth*.35,0);ctx.lineTo(innerWidth*.55,innerHeight);ctx.lineTo(innerWidth*.42,innerHeight);ctx.fill();
+    const grad=ctx.createLinearGradient(0,0,0,innerHeight);
+    grad.addColorStop(0,th.top);
+    grad.addColorStop(.52,th.mid);
+    grad.addColorStop(1,th.bottom);
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,innerWidth,innerHeight);
 
-    // plants / floor
-    ctx.fillStyle='#075047';ctx.fillRect(0,innerHeight-35,innerWidth,35);
-    ctx.strokeStyle='#16855f';ctx.lineWidth=8;ctx.lineCap='round';
-    for(let x=20;x<innerWidth;x+=75){ctx.beginPath();ctx.moveTo(x,innerHeight);ctx.quadraticCurveTo(x-18,innerHeight-60,x+4,innerHeight-105);ctx.stroke()}
+    ctx.fillStyle=th.shaft;
+    ctx.beginPath();
+    ctx.moveTo(innerWidth*.15,0);ctx.lineTo(innerWidth*.35,0);
+    ctx.lineTo(innerWidth*.55,innerHeight);ctx.lineTo(innerWidth*.42,innerHeight);
+    ctx.fill();
+
+    // 2つ目以降は岩や遠景を少し追加
+    if(stageTheme===1){
+      ctx.fillStyle='rgba(58,72,55,.36)';
+      for(let x=30;x<innerWidth;x+=170){
+        ctx.beginPath();ctx.ellipse(x,innerHeight-40,65,26,0,0,Math.PI*2);ctx.fill();
+      }
+    }else if(stageTheme===2){
+      ctx.fillStyle='rgba(28,39,48,.42)';
+      for(let x=70;x<innerWidth;x+=220){
+        ctx.beginPath();ctx.moveTo(x,innerHeight-35);ctx.lineTo(x+45,innerHeight-135);ctx.lineTo(x+95,innerHeight-35);ctx.closePath();ctx.fill();
+      }
+    }else if(stageTheme===3){
+      ctx.fillStyle='rgba(60,20,72,.24)';
+      ctx.beginPath();ctx.arc(innerWidth*.78,innerHeight*.30,120,0,Math.PI*2);ctx.fill();
+    }
+
+    ctx.fillStyle=th.floor;
+    ctx.fillRect(0,innerHeight-35,innerWidth,35);
+
+    ctx.strokeStyle=th.plant;ctx.lineWidth=8;ctx.lineCap='round';
+    for(let x=20;x<innerWidth;x+=75){
+      ctx.beginPath();ctx.moveTo(x,innerHeight);
+      ctx.quadraticCurveTo(x-18,innerHeight-60,x+4,innerHeight-105);ctx.stroke();
+    }
 
     ctx.fillStyle='rgba(230,255,255,.5)';
-    bubbles.forEach(b=>{b.y-=b.s*dt;if(b.y<-12){b.y=innerHeight+10;b.x=Math.random()*innerWidth}ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()});
+    bubbles.forEach(b=>{
+      b.y-=b.s*dt;
+      if(b.y<-12){b.y=innerHeight+10;b.x=Math.random()*innerWidth}
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+    });
   }
 
   function loop(now){
@@ -3114,6 +3293,19 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    // 同キャラ対戦時は相手側にRIVALマーク
+    if(enemy && enemy.sameCharacter && gameMode==='battle'){
+      ctx.save();
+      ctx.textAlign='center';
+      ctx.font='900 13px sans-serif';
+      ctx.fillStyle='#fff5a8';
+      ctx.strokeStyle='rgba(35,22,10,.7)';
+      ctx.lineWidth=4;
+      ctx.strokeText('▼ RIVAL ▼',enemy.x,enemy.y-enemy.radius-25);
+      ctx.fillText('▼ RIVAL ▼',enemy.x,enemy.y-enemy.radius-25);
+      ctx.restore();
+    }
 
     // JUST GUARD ミニゲームの小魚/水生昆虫は、背景とキャラ描画の後に必ず描く。
     if(guardMiniActive){

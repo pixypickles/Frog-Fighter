@@ -395,3 +395,25 @@ button{font:inherit;color:inherit}
   background:rgba(0,35,48,.68); border:1px solid rgba(255,255,255,.35);
   color:#fff; font-size:13px; font-weight:900; pointer-events:none;
 }
+
+.battle-mode-panel{
+  width:min(760px,96vw); margin:8px auto; display:grid; gap:7px;
+}
+.opponent-pick{
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  padding:8px 10px; border-radius:14px; background:rgba(0,45,60,.30);
+}
+.opponent-pick label{font-size:12px;font-weight:900}
+.opponent-pick select{
+  max-width:230px; padding:7px 10px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.45);
+  background:rgba(4,72,86,.92); color:white; font-weight:900;
+}
+.story-rule{font-size:11px;font-weight:800;opacity:.85;text-align:center}
+.story-btn{background:linear-gradient(180deg,#6d466f,#3a284f)!important}
+.story-hud{
+  position:absolute; top:54px; left:50%; transform:translateX(-50%);
+  z-index:35; padding:5px 10px; border-radius:13px;
+  background:rgba(10,25,42,.62); border:1px solid rgba(255,255,255,.3);
+  font-size:11px; font-weight:900; white-space:nowrap;
+}
