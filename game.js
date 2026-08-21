@@ -1622,8 +1622,8 @@
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
     f.specialType='pressureBlade'; f.specialT=.42; f.attack='punch'; f.attackT=.42;
     pressureBlades.push({
-      owner:f, x:f.x+f.face*52, y:f.y+2, vx:f.face*285,
-      t:1.35, life:1.35, hit:false
+      owner:f, x:f.x+f.face*52, y:f.y+2, vx:f.face*245,
+      t:1.55, life:1.55, hit:false
     });
     comboEl.textContent='水圧カッター!';
     setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},650);
@@ -2334,20 +2334,59 @@
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
 
-      // ラファエルさん：水を押し切って生まれる三日月状の水圧波
+      // ラファエルさん：はっきり見える三日月型の水圧カッター
     pressureBlades.forEach(p=>{
       const a=Math.max(0,p.t/p.life);
-      ctx.save();ctx.translate(p.x,p.y);
-      if(p.vx<0)ctx.scale(-1,1);
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      if(p.vx<0) ctx.scale(-1,1);
+
       ctx.globalCompositeOperation='lighter';
-      ctx.globalAlpha=.72*a;
-      ctx.strokeStyle='#d8fbff';ctx.lineWidth=7;ctx.lineCap='round';
-      ctx.beginPath();ctx.arc(0,0,28,-1.05,1.05);ctx.stroke();
-      ctx.globalAlpha=.35*a;ctx.strokeStyle='#8deaff';ctx.lineWidth=14;
-      ctx.beginPath();ctx.arc(-3,0,26,-1.0,1.0);ctx.stroke();
-      // 水中らしく後ろに少量の泡
-      ctx.globalAlpha=.45*a;ctx.fillStyle='#e9ffff';
-      ctx.beginPath();ctx.arc(-25,-10,3,0,Math.PI*2);ctx.arc(-34,8,2,0,Math.PI*2);ctx.fill();
+
+      // 外側の淡い発光
+      ctx.globalAlpha=.32*a;
+      ctx.strokeStyle='#8cecff';
+      ctx.lineWidth=24;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.arc(0,0,31,-1.15,1.15);
+      ctx.stroke();
+
+      // 主体の太い白水色ライン
+      ctx.globalAlpha=.95*a;
+      ctx.strokeStyle='#efffff';
+      ctx.lineWidth=9;
+      ctx.beginPath();
+      ctx.arc(0,0,30,-1.12,1.12);
+      ctx.stroke();
+
+      // 内側の青ラインで輪郭を明確に
+      ctx.globalAlpha=.8*a;
+      ctx.strokeStyle='#53d8ff';
+      ctx.lineWidth=4;
+      ctx.beginPath();
+      ctx.arc(-2,0,24,-1.08,1.08);
+      ctx.stroke();
+
+      // 進行方向に少し尖りを追加
+      ctx.globalAlpha=.9*a;
+      ctx.fillStyle='#eaffff';
+      ctx.beginPath();
+      ctx.moveTo(15,-25);
+      ctx.lineTo(39,0);
+      ctx.lineTo(15,25);
+      ctx.closePath();
+      ctx.fill();
+
+      // 後ろに泡の軌跡
+      ctx.globalAlpha=.55*a;
+      ctx.fillStyle='#e9ffff';
+      for(let i=0;i<4;i++){
+        ctx.beginPath();
+        ctx.arc(-30-i*11,(-1)**i*(6+i*2),3+(i%2),0,Math.PI*2);
+        ctx.fill();
+      }
+
       ctx.restore();
     });
 
