@@ -479,7 +479,7 @@
       ctx.beginPath();
       ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
       if(this.attack!=='kick'){
-        ctx.moveTo(15,48); ctx.lineTo(19,62); ctx.lineTo(28,67);
+        ctx.moveTo(0,8); ctx.lineTo(19,62); ctx.lineTo(28,67);
       }
       ctx.stroke();
 
@@ -491,7 +491,7 @@
         ctx.beginPath();
         ctx.moveTo(-23,22); ctx.lineTo(-32,35);
         if(this.attack!=='punch'){
-          ctx.moveTo(23,22); ctx.lineTo(32,35);
+          ctx.moveTo(0,8); ctx.lineTo(32,35);
         }
         ctx.stroke();
       }
@@ -615,7 +615,7 @@
         ctx.lineWidth=12;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(22,22);
+        ctx.moveTo(0,8);
         if(this.specialType==='aquaTornado'){
           ctx.lineTo(48,-34);
         }else if(this.attackVariant==='up'){
@@ -639,7 +639,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(15,48);
+        ctx.moveTo(0,8);
         if(this.attackVariant==='down'){
           ctx.lineTo(52,78);
         }else{
@@ -657,7 +657,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(14,46);
+        ctx.moveTo(0,8);
         ctx.lineTo(67,39);
         ctx.stroke();
         ctx.restore();
@@ -674,7 +674,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(15,47);
+        ctx.moveTo(0,8);
         ctx.lineTo(48,68);
         ctx.stroke();
         ctx.restore();
@@ -683,23 +683,32 @@
       if(this.specialType==='ribbonWhip'){
         ctx.save();
         ctx.strokeStyle='#f08b9a';
-        ctx.lineWidth=7;
+        ctx.lineWidth=6;
         ctx.lineCap='round';
 
-        const idx=Math.max(1,this.ribbonWhipIndex)-1;
-        const local=(performance.now()/135)%1;
-        const even=idx%2===0;
+        const phase=(performance.now()/55);
+        const offsets=[-24,16,-8,26,-18,10,0];
 
-        // even: 上→下 / odd: 下→上
-        const startY=even ? -52 : 48;
-        const endY=even ? 48 : -52;
-        const swingY=startY+(endY-startY)*local;
-        const reach=158;
+        // 舌の根元は常に口中央。
+        // 先端側だけが何本も高速で飛び出して見えるようにする。
+        for(let i=0;i<5;i++){
+          const idx=(Math.floor(phase)+i)%offsets.length;
+          const y=offsets[idx];
+          const reach=92+i*18;
+          const alpha=.28+i*.14;
 
-        ctx.beginPath();
-        ctx.moveTo(15,7);
-        ctx.quadraticCurveTo(72,swingY*.55,reach,swingY);
-        ctx.stroke();
+          ctx.globalAlpha=alpha;
+          ctx.beginPath();
+          ctx.moveTo(0,8);
+          ctx.lineTo(reach,y);
+          ctx.stroke();
+
+          // 舌先だけ少し太くして「突き」の連打感を出す
+          ctx.beginPath();
+          ctx.arc(reach,y,5.2,0,Math.PI*2);
+          ctx.fillStyle='#ff9dad';
+          ctx.fill();
+        }
 
         ctx.restore();
       }
@@ -716,7 +725,7 @@
         if(hammer){
           // 最後は頭上から振り下ろす
           ctx.beginPath();
-          ctx.moveTo(15,-8);
+          ctx.moveTo(0,8);
           ctx.lineTo(28,-42);
           ctx.lineTo(45,28);
           ctx.stroke();
@@ -745,7 +754,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(14,46);
+        ctx.moveTo(0,8);
         ctx.lineTo(58,67);
         ctx.stroke();
         ctx.restore();
@@ -758,7 +767,7 @@
         ctx.lineWidth=8;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(28,-2);
+        ctx.moveTo(0,8);
         ctx.lineTo(28+len,-2);
         ctx.stroke();
       }
@@ -801,7 +810,7 @@
         ctx.lineTo(10,18);
 
         // 敵に近い側の手：上から斜めに胸を守る
-        ctx.moveTo(23,22);
+        ctx.moveTo(0,8);
         ctx.lineTo(12,10);
         ctx.lineTo(-5,16);
 
@@ -916,7 +925,9 @@
     punchTapTimes:[],
     tongueTapTimes:[],
     guardTapTimes:[],
-    lastBackInputTime:0
+    lastBackInputTime:0,
+    purpleGuardCount:0,
+    purpleGuardLastTime:0
   };
 
   function pushCommandDir(dir){
@@ -1167,41 +1178,35 @@
     const dir=f.face;
 
     f.specialType='ribbonWhip';
-    f.specialT=.95;
+    f.specialT=.82;
     f.attack='tongue';
-    f.attackT=.95;
+    f.attackT=.82;
     f.ribbonWhipIndex=0;
 
-    comboEl.textContent='リボンウィップ!';
+    comboEl.textContent='リボンラッシュ!';
     setTimeout(()=>{
-      if(comboEl.textContent==='リボンウィップ!') comboEl.textContent='';
-    },760);
+      if(comboEl.textContent==='リボンラッシュ!') comboEl.textContent='';
+    },720);
 
-    // 上→下、下→上、上→下、下→上、上→下 の5回
-    const directions=[
-      {from:-52,to:48},
-      {from:48,to:-52},
-      {from:-52,to:48},
-      {from:48,to:-52},
-      {from:-52,to:48}
-    ];
-
-    directions.forEach((swing,i)=>{
+    // 百裂キック風：舌先を高速で7回突き出す。
+    const offsets=[-24,16,-8,26,-18,10,0];
+    offsets.forEach((oy,i)=>{
       setTimeout(()=>{
         if(gameOver || !other) return;
         f.ribbonWhipIndex=i+1;
 
         const dx=(other.x-f.x)*dir;
-        // 1回の振り幅が広いので、上下判定は広め
-        if(dx>0 && dx<f.tongueRange*1.42 && Math.abs(other.y-f.y)<78){
+        const dy=other.y-(f.y+oy);
+
+        if(dx>0 && dx<f.tongueRange*1.42 && Math.abs(dy)<44){
           damageHit(
             f,other,
-            1.3*f.damageMul,
-            (i===4?95:20)*dir,
-            (i===4?-35:0)
+            (i===6?1.8:1.0)*f.damageMul,
+            (i===6?85:18)*dir,
+            (i===6?-30:0)
           );
         }
-      },i*135);
+      },i*82);
     });
 
     return true;
@@ -1212,16 +1217,17 @@
     const other=f.isPlayer?enemy:player;
     if(!other) return false;
     f.specialType='catfishCall'; f.specialT=.65; f.attackT=.30;
-    // 敵の背後側、画面内から必ず見える位置に出す。
-    const towardEnemy = other.x>=f.x ? 1 : -1;
-    const spawnSide=towardEnemy;
-    const spawnX=Math.max(90,Math.min(innerWidth-90,other.x+spawnSide*170));
+    // 敵の背後側の画面端から必ず出現。
+    const attackDir = other.x>=f.x ? -1 : 1;
+    const spawnX = attackDir>0 ? 55 : innerWidth-55;
+
     catfishCharges.push({
-      owner:f,target:other,
+      owner:f,
+      target:other,
       x:spawnX,
-      y:Math.max(90,Math.min(innerHeight-90,other.y+12)),
-      vx:-spawnSide*320,
-      t:1.65,
+      y:Math.max(90,Math.min(innerHeight-90,other.y)),
+      vx:attackDir*360,
+      t:1.8,
       hit:false
     });
     comboEl.textContent='ナマズさん突進!';
@@ -1671,27 +1677,41 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
-          // リリスさん：後ろ入力のあと約1秒以内にガードを2回でナマズさん。
+          // リリスさん：後ろを入れたまま、または直前に後ろ入力してガード×2。
           if(player.type==='purple' && !player.throwState){
             const now=performance.now();
-            input.guardTapTimes=(input.guardTapTimes||[]).filter(t=>now-t<=700);
-            input.guardTapTimes.push(now);
 
-            const recentlyBack = now-(input.lastBackInputTime||0) <= 1000;
+            // 現在のスティック方向も直接見る。
+            const backNow =
+              (player.face>0 && input.x<-.35) ||
+              (player.face<0 && input.x>.35);
 
-            if(recentlyBack && input.guardTapTimes.length>=2){
-              input.guardTapTimes=[];
-              input.lastBackInputTime=0;
-              clearCommand();
+            const recentlyBack = now-(input.lastBackInputTime||0) <= 1200;
 
-              // 通常ガード状態に入る前に必殺技を発動
-              player.guard=false;
-              player.attackT=0;
-
-              if(specialCatfishCharge(player)){
-                btn.classList.remove('pressed');
-                return;
+            if(backNow || recentlyBack){
+              if(now-(input.purpleGuardLastTime||0) <= 700){
+                input.purpleGuardCount=(input.purpleGuardCount||0)+1;
+              }else{
+                input.purpleGuardCount=1;
               }
+              input.purpleGuardLastTime=now;
+
+              if(input.purpleGuardCount>=2){
+                input.purpleGuardCount=0;
+                input.purpleGuardLastTime=0;
+                input.lastBackInputTime=0;
+                clearCommand();
+
+                player.guard=false;
+                player.attackT=0;
+
+                if(specialCatfishCharge(player)){
+                  btn.classList.remove('pressed');
+                  return;
+                }
+              }
+            }else{
+              input.purpleGuardCount=0;
             }
           }
 
@@ -1923,13 +1943,21 @@
 
       catfishCharges.forEach(n=>{
       ctx.save(); ctx.translate(n.x,n.y); if(n.vx<0)ctx.scale(-1,1);
-      ctx.fillStyle='#4b5352'; ctx.beginPath(); ctx.ellipse(0,0,62,30,0,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#68716f'; ctx.beginPath(); ctx.ellipse(40,-2,27,21,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#4b5352'; ctx.beginPath(); ctx.ellipse(0,0,72,34,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#68716f'; ctx.beginPath(); ctx.ellipse(47,-2,30,23,0,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(48,-8,5,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(49,-8,2.5,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle='#697574'; ctx.lineWidth=2.5; ctx.beginPath();
       ctx.moveTo(52,2);ctx.quadraticCurveTo(68,-6,78,4);
       ctx.moveTo(52,6);ctx.quadraticCurveTo(68,14,80,9);ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha=.8;
+      ctx.fillStyle='#dffcff';
+      ctx.font='bold 11px sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText('ナマズさん!',n.x,n.y-42);
       ctx.restore();
     });
 
