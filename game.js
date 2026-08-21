@@ -563,7 +563,9 @@
       if(this.type==='piranha'){
         if(this.face<0) ctx.scale(-1,1);
         // パンチは前転で背びれ斬り、キックはバク転で尻尾斬り
-        if(this.attack==='punch' && this.specialType!=='piranhaDivePunch'){
+        if((this.specialType==='piranhaDivePunch'||this.specialType==='piranhaDiveKick') && this.piranhaDivePhase>=2){
+          ctx.rotate(Math.PI/2); // 口を真下へ向けて急降下
+        }else if(this.attack==='punch' && this.specialType!=='piranhaDivePunch'){
           const t=Math.max(0,Math.min(1,this.attackT/.34)); ctx.rotate((1-t)*Math.PI*2);
         }else if(this.attack==='kick' && this.specialType!=='piranhaDiveKick'){
           const t=Math.max(0,Math.min(1,this.attackT/.40)); ctx.rotate(-(1-t)*Math.PI*2);
@@ -694,37 +696,34 @@
         ctx.arc(-2,-23,2.5,0,Math.PI*2);
         ctx.fill();
 
-        // ハサミ
-        let clawExtend=0;
-        let clawY=7;
+        // ハサミ：腕だけでなくハサミ本体ごと振る
+        let clawExtend=0, clawY=7, armStartY=0;
         if(this.attack==='crayfishStab') clawExtend=28;
-        if(this.attack==='crayfishHammer') clawY=30;
-        if(this.attack==='crayfishUpper') clawY=-18;
+        if(this.attack==='crayfishHammer'){ clawExtend=8; clawY=42; armStartY=4; }
+        if(this.attack==='crayfishUpper'){ clawExtend=8; clawY=-34; armStartY=-4; }
         if(this.specialType==='crayfishRush'){
           clawExtend=18+Math.sin(performance.now()/45)*10;
           clawY=Math.sin(performance.now()/55)*12;
         }
-
-        ctx.strokeStyle='#a94331';
-        ctx.lineWidth=10;
-        ctx.lineCap='round';
-
+        ctx.strokeStyle='#a94331'; ctx.lineWidth=11; ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(18,0); ctx.lineTo(42+clawExtend,clawY);
-        ctx.moveTo(-18,2); ctx.lineTo(-39,13);
-        ctx.stroke();
+        ctx.moveTo(18,armStartY); ctx.lineTo(42+clawExtend,clawY);
+        ctx.moveTo(-18,2); ctx.lineTo(-39,13); ctx.stroke();
 
-        ctx.fillStyle='#c95b40';
-        ctx.beginPath();
-        ctx.ellipse(48+clawExtend,clawY,18,13,.15,0,Math.PI*2);
-        ctx.ellipse(-45,13,17,12,-.15,0,Math.PI*2);
-        ctx.fill();
+        ctx.fillStyle='#c95b40'; ctx.beginPath();
+        ctx.ellipse(49+clawExtend,clawY,19,14,.15,0,Math.PI*2);
+        ctx.ellipse(-45,13,17,12,-.15,0,Math.PI*2); ctx.fill();
+
+        if(this.attack==='crayfishHammer'||this.attack==='crayfishUpper'){
+          ctx.fillStyle='#e57a58'; ctx.beginPath();
+          ctx.ellipse(59+clawExtend,clawY-2,10,8,.2,0,Math.PI*2); ctx.fill();
+        }
 
         // ハサミ割れ
         ctx.strokeStyle='#793025';
         ctx.lineWidth=3;
         ctx.beginPath();
-        ctx.moveTo(48+clawExtend,-4); ctx.lineTo(50+clawExtend,18);
+        ctx.moveTo(49+clawExtend,clawY-11); ctx.lineTo(51+clawExtend,clawY+11);
         ctx.moveTo(-45,2); ctx.lineTo(-45,23);
         ctx.stroke();
 
@@ -1889,14 +1888,23 @@
       f.crayfishSmashDone=true;
 
       const floorY=innerHeight-35;
-      // 大量の土煙
-      for(let i=0;i<7;i++){
+      // 大量の土煙：一時的に画面全体が茶色く霞む規模
+      const cloudCount=42;
+      for(let i=0;i<cloudCount;i++){
+        const life=1.65+Math.random()*.75;
         siltClouds.push({
-          x:Math.max(20,Math.min(innerWidth-20,f.x+(i-3)*28)),
-          y:floorY-2,
-          t:1.2+Math.random()*.35,
-          life:1.2+Math.random()*.35,
-          radius:30+Math.random()*14
+          x:Math.random()*innerWidth,
+          y:floorY-Math.random()*Math.max(150,innerHeight*.58),
+          t:life, life:life, radius:45+Math.random()*70, mega:true
+        });
+      }
+      // 叩いた地点にはさらに濃い土の柱
+      for(let i=0;i<14;i++){
+        const life=1.4+Math.random()*.55;
+        siltClouds.push({
+          x:Math.max(0,Math.min(innerWidth,f.x+(Math.random()-.5)*360)),
+          y:floorY-Math.random()*180,
+          t:life, life:life, radius:65+Math.random()*75, mega:true
         });
       }
 
@@ -2918,14 +2926,14 @@
     siltClouds.forEach(s=>{
       const a=Math.max(0,s.t/s.life);
       ctx.save();
-      ctx.globalAlpha=.42*a;
-      ctx.fillStyle='#8a6848';
+      ctx.globalAlpha=(s.mega ? .76 : .42)*a;
+      ctx.fillStyle=s.mega ? '#674323' : '#8a6848';
       ctx.beginPath();
-      ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
+      ctx.ellipse(s.x,s.y-4,s.radius*(s.mega?1.75:1.45),s.radius*(s.mega?.82:.58),0,0,Math.PI*2);
       ctx.fill();
 
-      ctx.globalAlpha=.22*a;
-      ctx.fillStyle='#b08a62';
+      ctx.globalAlpha=(s.mega ? .48 : .22)*a;
+      ctx.fillStyle=s.mega ? '#9a6938' : '#b08a62';
       ctx.beginPath();
       ctx.ellipse(s.x-10,s.y-12,s.radius*.75,s.radius*.42,-.25,0,Math.PI*2);
       ctx.ellipse(s.x+12,s.y-9,s.radius*.65,s.radius*.36,.2,0,Math.PI*2);
