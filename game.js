@@ -148,6 +148,20 @@
     ctx.restore();
   }
 
+  function fighterPalette(type){
+    if(type==='black'){
+      // ルシファーさん：黒そのものではなく、かなり暗い赤黒色
+      return {body:'#3a171b', limb:'#4b2024', light:'#603036'};
+    }
+    if(type==='purple'){
+      return {body:'#8b45b5', limb:'#9e59c7', light:'#bd7add'};
+    }
+    if(type==='blue'){
+      return {body:'#32a9df', limb:'#48b9e7', light:'#72ccef'};
+    }
+    return {body:'#38c94d', limb:'#61d357', light:'#78e36d'};
+  }
+
   class Fighter {
     constructor(x, y, isPlayer, type='green') {
       const s = stats[type] || stats.green;
@@ -398,14 +412,8 @@
     draw() {
       ctx.save();
       ctx.translate(this.x,this.y);
+      const pal=fighterPalette(this.type);
 
-      // v2.5 新キャラの色。必殺技・性能は後で個別調整。
-      if(this.type==='black'){
-        // 完全な黒ではなく、赤黒さを含む暗い色
-        ctx.filter='hue-rotate(305deg) saturate(1.45) brightness(.42) contrast(1.25)';
-      }else if(this.type==='purple'){
-        ctx.filter='hue-rotate(105deg) saturate(1.5) brightness(.88)';
-      }
 
       // ヘルラッシュ中は少し低い姿勢
       if(this.specialType==='hellRush' && this.specialT>.55){
@@ -423,7 +431,7 @@
       if(this.flash>0) ctx.globalAlpha=.55;
 
       ctx.save();
-      ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+      ctx.filter='none';
 
       // 2頭身くらいの丸い胴体
       ctx.fillStyle='#58bd50';
@@ -453,7 +461,7 @@
       // ニュートラル腕。
       // パンチ中・ガード中は通常腕を描かず、それぞれ専用ポーズに差し替える。
       if(!this.guard && this.attack!=='wave'){
-        ctx.strokeStyle='#58bd50';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=10;
         ctx.beginPath();
         ctx.moveTo(-23,22); ctx.lineTo(-32,35);
@@ -539,31 +547,37 @@
 
       ctx.restore();
 
-      // リリスさんの頭のリボン
+      // リリスさん：頭の大きなリボン
       if(this.type==='purple'){
-        ctx.save(); ctx.translate(0,-48);
-        ctx.fillStyle='#f5a3d8'; ctx.strokeStyle='rgba(110,45,105,.75)'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.ellipse(-10,0,13,8,-.35,0,Math.PI*2);
-        ctx.ellipse(10,0,13,8,.35,0,Math.PI*2); ctx.fill();ctx.stroke();
-        ctx.fillStyle='#ffd0eb';ctx.beginPath();ctx.arc(0,1,6,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.save();
+        ctx.translate(0,-58);
+        ctx.fillStyle='#ff86c8';
+        ctx.strokeStyle='#8b2f72';
+        ctx.lineWidth=2.5;
+        ctx.beginPath();
+        ctx.moveTo(-3,2);
+        ctx.quadraticCurveTo(-24,-14,-27,3);
+        ctx.quadraticCurveTo(-24,18,-3,7);
+        ctx.closePath();
+        ctx.moveTo(3,2);
+        ctx.quadraticCurveTo(24,-14,27,3);
+        ctx.quadraticCurveTo(24,18,3,7);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#ffd0eb';
+        ctx.beginPath(); ctx.arc(0,4,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.restore();
       }
 
-      // ルシファーさんの顔の傷
+      // ルシファーさん：シンプルな一本傷
       if(this.type==='black'){
         ctx.save();
-        ctx.strokeStyle='rgba(120,25,30,.92)';
-        ctx.lineWidth=3.2;
+        ctx.strokeStyle='#a74a4e';
+        ctx.lineWidth=3.4;
         ctx.lineCap='round';
-
-        // 目の横から頬へ斜めの傷＋短い交差傷
         ctx.beginPath();
-        ctx.moveTo(10,-24);
-        ctx.lineTo(24,-7);
-        ctx.moveTo(14,-18);
-        ctx.lineTo(20,-23);
-        ctx.moveTo(19,-12);
-        ctx.lineTo(25,-17);
+        ctx.moveTo(8,-27);
+        ctx.lineTo(24,-8);
         ctx.stroke();
         ctx.restore();
       }
@@ -571,8 +585,8 @@
       // パンチは腕だけ前へ
       if(this.attack==='punch'){
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#61d357';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=12;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -595,8 +609,8 @@
       // キックは脚だけ前へ
       if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='aquaStream'){
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#61d357';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -613,8 +627,8 @@
       if(this.specialType==='dropkick'){
         // 攻撃する脚は1本だけ。反対側の脚は軸足として身体側に残す。
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#61d357';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -630,8 +644,8 @@
 
       if(this.specialType==='aquaStream'){
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#61d357';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -655,7 +669,7 @@
       // ヘルラッシュ5発目：上から振り下ろす拳
       if(this.specialType==='hellRush' && this.luciferRushHits>=4){
         ctx.save();
-        ctx.strokeStyle='#61d357';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -668,7 +682,7 @@
       // ダークネスラッシュ：片足を斜め前下へ伸ばす
       if(this.specialType==='darknessRush'){
         ctx.save();
-        ctx.strokeStyle='#61d357';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -692,8 +706,8 @@
 
       if(this.attack==='wave'){
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#58bd50';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=11;
         ctx.lineCap='round';
         ctx.beginPath();
@@ -711,8 +725,8 @@
 
       if(this.guard){
         ctx.save();
-        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
-        ctx.strokeStyle='#58bd50';
+        ctx.filter='none';
+        ctx.strokeStyle=pal.limb;
         ctx.lineWidth=11;
         ctx.lineCap='round';
         ctx.lineJoin='round';
@@ -1116,6 +1130,7 @@
     const other=f.isPlayer?enemy:player;
     const dir=f.face;
 
+    f.attackT=0;
     f.specialType='hellRush';
     f.specialT=1.18;
     f.attack='punch';
@@ -1262,6 +1277,25 @@
     return true;
   }
 
+  function hasBackBackCommand(f, windowMs=820){
+    const back=f.face>0?'left':'right';
+    const diagUp=f.face>0?'upLeft':'upRight';
+    const diagDown=f.face>0?'downLeft':'downRight';
+    const valid=new Set([back,diagUp,diagDown]);
+    const now=performance.now();
+    const recent=input.commandHistory.filter(e=>now-e.t<=windowMs);
+    let count=0;
+    for(let i=recent.length-1;i>=0;i--){
+      if(valid.has(recent[i].dir)){
+        count++;
+        if(count>=2) return true;
+      }else if(count>0){
+        break;
+      }
+    }
+    return false;
+  }
+
   function trySpecial(f,kind){
     if(!f) return false;
 
@@ -1325,10 +1359,17 @@
     const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
 
     if(f.type==='black' && kind==='punch' && rapidTriple){
+      // 1・2発目の通常パンチ硬直を3発目でキャンセルして必殺技へ。
+      f.attackT=0;
+      f.attack=null;
       if(specialHellRush(f)) return;
     }
 
     if(f.type==='purple' && kind==='tongue' && rapidTriple){
+      // 1・2回目の通常舌硬直を3回目でキャンセル。
+      f.attackT=0;
+      f.attack=null;
+      f.tongueT=0;
       if(specialRibbonWhip(f)) return;
     }
 
@@ -1528,8 +1569,7 @@
         if(player){
           // リリスさん：後ろ→後ろ→ガードで、敵の背後からナマズさん。
           if(player.type==='purple' && !player.throwState){
-            const back=player.face>0?'left':'right';
-            if(hasCommand([back,back],780)){
+            if(hasBackBackCommand(player,820)){
               clearCommand();
               if(specialCatfishCharge(player)){
                 btn.classList.remove('pressed');
