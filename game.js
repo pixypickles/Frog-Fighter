@@ -62,7 +62,18 @@
     resize();
     startGame();
   };
-  restartButton.onclick = startGame;
+
+  const practiceBtn=document.getElementById('practiceBtn');
+  if(practiceBtn){
+    practiceBtn.onclick=()=>{
+      startPractice();
+    };
+  }
+
+  restartButton.onclick = () => {
+    if(gameMode==='practice') startPractice();
+    else startGame();
+  };
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -80,7 +91,7 @@
       this.type=type; this.speed=s.speed; this.tongueRange=s.tongue; this.damageMul=s.damage;
       this.sink=s.sink; this.hue=s.hue;
       this.radius=35; this.hp=100; this.face = isPlayer ? 1 : -1;
-      this.attack=null; this.attackT=0; this.stun=0; this.guard=false; this.tongueT=0;
+      this.attack=null; this.attackT=0; this.attackVariant='mid'; this.stun=0; this.guard=false; this.tongueT=0;
       this.flash=0;
       this.hurtFaceT=0;
       this.hurtFace='wink';
@@ -380,7 +391,13 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(22,22);
-        ctx.lineTo(59,8);
+        if(this.attackVariant==='up'){
+          ctx.lineTo(48,-22);
+        }else if(this.attackVariant==='down'){
+          ctx.lineTo(50,53);
+        }else{
+          ctx.lineTo(59,8);
+        }
         ctx.stroke();
         ctx.restore();
       }
@@ -394,7 +411,13 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(15,48);
-        ctx.lineTo(60,48);
+        if(this.attackVariant==='up'){
+          ctx.lineTo(55,-5);
+        }else if(this.attackVariant==='down'){
+          ctx.lineTo(52,78);
+        }else{
+          ctx.lineTo(60,48);
+        }
         ctx.stroke();
         ctx.restore();
       }
@@ -483,6 +506,11 @@
       this.flash=0;
       this.face=-1;
       this.isPlayer=false;
+      this.tonguePullTarget=null;
+      this.tonguePullTimer=0;
+      this.tongueClashTarget=null;
+      this.tongueClashTimer=0;
+      this.spinAngle=0;
     }
     hit(dmg,kx,ky){
       this.vx+=kx*.72;
@@ -631,15 +659,26 @@
   function startPractice(){
     gameMode='practice';
     gameOver=false;
+    restartButton.hidden=true;
     comboHits=0;
     comboTimer=0;
+    comboEl.textContent='';
 
-    player=new Fighter(innerWidth*.28,innerHeight*.48,true,selected||'green');
+    show('game');
+    resize();
+
+    player=new Fighter(innerWidth*.28,innerHeight*.50,true,selectedFighter);
     enemy=new PracticeDummy();
 
-    if(title) title.classList.add('hidden');
-    if(select) select.classList.add('hidden');
-    if(game) game.classList.remove('hidden');
+    bubbles=Array.from({length:28},()=>({
+      x:Math.random()*innerWidth,
+      y:Math.random()*innerHeight,
+      r:2+Math.random()*6,
+      s:10+Math.random()*26
+    }));
+    particles=[];
+    hitRings=[];
+    guardWaves=[];
 
     if(!practiceLabel){
       practiceLabel=document.createElement('div');
@@ -649,8 +688,11 @@
     }
     practiceLabel.style.display='block';
 
+    running=true;
+    last=performance.now();
     updateHud();
   }
+
 
   function startGame() {
     gameMode='battle';
@@ -668,6 +710,21 @@
     running=true; last=performance.now();
   }
 
+
+  function chooseAttackVariant(f, other){
+    // プレイヤーはスティック上下を強めに入れていれば明示指定。
+    if(f.isPlayer){
+      if(input.y<-.42) return 'up';
+      if(input.y>.42) return 'down';
+    }
+
+    // 指定がなければ相手との上下差から自動補正。
+    const dy=other.y-f.y;
+    if(dy<-30) return 'up';
+    if(dy>30) return 'down';
+    return 'mid';
+  }
+
   function attack(f, kind) {
     if(gameOver || f.guard) return;
 
@@ -681,15 +738,25 @@
     const dir=f.face;
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
 
+    if(kind==='punch' || kind==='kick'){
+      f.attackVariant=chooseAttackVariant(f,other);
+    }
+
     if(kind==='punch'){
       f.attack='punch';f.attackT=.34;
-      if(dist<82 && Math.abs(other.y-f.y)<55){
-        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,52*dir,-5),125);
+      const v=f.attackVariant;
+      const yAim=v==='up'?-34:(v==='down'?34:0);
+      if(dist<88 && Math.abs((other.y-f.y)-yAim)<58){
+        const ky=v==='up'?-72:(v==='down'?70:-5);
+        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,52*dir,ky),125);
       }
     } else if(kind==='kick'){
       f.attack='kick';f.attackT=.50;
-      if(dist<100 && Math.abs(other.y-f.y)<70){
-        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,142*dir,-21),175);
+      const v=f.attackVariant;
+      const yAim=v==='up'?-42:(v==='down'?42:0);
+      if(dist<106 && Math.abs((other.y-f.y)-yAim)<72){
+        const ky=v==='up'?-125:(v==='down'?125:-21);
+        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,142*dir,ky),175);
       }
     } else if(kind==='tongue'){
       // 自分が舌で引き寄せられている最中に舌を押すと「投げ抜け」。
@@ -809,8 +876,8 @@
   }
 
   function updateHud(){
-    playerHpEl.style.width=player.hp+'%';
-    enemyHpEl.style.width=enemy.hp+'%';
+    playerHpEl.style.width=Math.max(0,Math.min(100,player.hp))+'%';
+    enemyHpEl.style.width=(gameMode==='practice'?100:Math.max(0,Math.min(100,enemy.hp)))+'%';
   }
 
   // Touch stick
