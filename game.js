@@ -110,6 +110,39 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
 
+  function drawBurningAura(x,y,rx,ry,rotation=0){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(rotation);
+    ctx.globalCompositeOperation='lighter';
+
+    const pulse=.92+Math.sin(performance.now()/55)*.08;
+    ctx.scale(pulse,pulse);
+
+    for(let i=0;i<4;i++){
+      const t=performance.now()/120+i*1.7;
+      ctx.globalAlpha=.12+i*.06;
+      ctx.fillStyle=i%2===0?'#ff2d20':'#ff8a28';
+      ctx.beginPath();
+      ctx.ellipse(
+        Math.sin(t*1.8+i)*4,
+        Math.cos(t*1.3+i)*3,
+        rx+i*3,ry+i*2,0,0,Math.PI*2
+      );
+      ctx.fill();
+    }
+
+    for(let i=0;i<5;i++){
+      const a=performance.now()/300+i*1.25;
+      ctx.globalAlpha=.5;
+      ctx.fillStyle=i%2?'#ff3b25':'#ffad3d';
+      ctx.beginPath();
+      ctx.arc(Math.cos(a)*rx*.75,Math.sin(a*1.4)*ry*.7,2.2+(i%2),0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   class Fighter {
     constructor(x, y, isPlayer, type='green') {
       const s = stats[type] || stats.green;
@@ -442,10 +475,14 @@
         }
         ctx.stroke();
         ctx.restore();
+
+        if(this.specialType==='uppercut'){
+          drawBurningAura(48,-22,13,18,-.35);
+        }
       }
 
       // キックは脚だけ前へ
-      if(this.attack==='kick'){
+      if(this.attack==='kick' && this.specialType!=='dropkick'){
         ctx.save();
         ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
         ctx.strokeStyle='#61d357';
@@ -463,18 +500,19 @@
       }
 
       if(this.specialType==='dropkick'){
+        // 攻撃する脚は1本だけ。反対側の脚は軸足として身体側に残す。
         ctx.save();
         ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
         ctx.strokeStyle='#61d357';
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(14,43);
-        ctx.lineTo(66,35);
-        ctx.moveTo(10,52);
-        ctx.lineTo(64,50);
+        ctx.moveTo(14,46);
+        ctx.lineTo(67,39);
         ctx.stroke();
         ctx.restore();
+
+        drawBurningAura(61,39,25,13,-.12);
       }
 
       if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0) || (this.tongueClashTarget && this.tongueClashTimer>0)){
@@ -836,9 +874,9 @@
         damageHit(f,other,8.0*f.damageMul,90*f.face,-230);
       }
 
-      comboEl.textContent='かえる跳びアッパー!';
+      comboEl.textContent='バーニングアッパー!';
       setTimeout(()=>{
-        if(comboEl.textContent==='かえる跳びアッパー!') comboEl.textContent='';
+        if(comboEl.textContent==='バーニングアッパー!') comboEl.textContent='';
       },600);
     },180);
 
@@ -866,9 +904,9 @@
         damageHit(f,other,10.0*f.damageMul,240*f.face,-35);
       }
 
-      comboEl.textContent='ドロップキック!';
+      comboEl.textContent='バーニングキック!';
       setTimeout(()=>{
-        if(comboEl.textContent==='ドロップキック!') comboEl.textContent='';
+        if(comboEl.textContent==='バーニングキック!') comboEl.textContent='';
       },600);
     },145);
 
