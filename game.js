@@ -479,7 +479,7 @@
       ctx.beginPath();
       ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
       if(this.attack!=='kick'){
-        ctx.moveTo(0,8); ctx.lineTo(19,62); ctx.lineTo(28,67);
+        ctx.moveTo(15,48); ctx.lineTo(19,62); ctx.lineTo(28,67);
       }
       ctx.stroke();
 
@@ -491,7 +491,7 @@
         ctx.beginPath();
         ctx.moveTo(-23,22); ctx.lineTo(-32,35);
         if(this.attack!=='punch'){
-          ctx.moveTo(0,8); ctx.lineTo(32,35);
+          ctx.moveTo(23,22); ctx.lineTo(32,35);
         }
         ctx.stroke();
       }
@@ -754,7 +754,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(0,8);
+        ctx.moveTo(15,47);
         ctx.lineTo(58,67);
         ctx.stroke();
         ctx.restore();
@@ -767,8 +767,9 @@
         ctx.lineWidth=8;
         ctx.lineCap='round';
         ctx.beginPath();
+        // 口の中央から出す
         ctx.moveTo(0,8);
-        ctx.lineTo(28+len,-2);
+        ctx.lineTo(len,8);
         ctx.stroke();
       }
 
@@ -810,7 +811,7 @@
         ctx.lineTo(10,18);
 
         // 敵に近い側の手：上から斜めに胸を守る
-        ctx.moveTo(0,8);
+        ctx.moveTo(23,22);
         ctx.lineTo(12,10);
         ctx.lineTo(-5,16);
 
@@ -1217,17 +1218,18 @@
     const other=f.isPlayer?enemy:player;
     if(!other) return false;
     f.specialType='catfishCall'; f.specialT=.65; f.attackT=.30;
-    // 敵の背後側の画面端から必ず出現。
-    const attackDir = other.x>=f.x ? -1 : 1;
-    const spawnX = attackDir>0 ? 55 : innerWidth-55;
+    // リリスさん自身の背後から現れて、そのまま相手方向へ突進。
+    const attackDir=f.face;
+    const behindX=f.x-attackDir*105;
+    const spawnX=Math.max(72,Math.min(innerWidth-72,behindX));
 
     catfishCharges.push({
       owner:f,
       target:other,
       x:spawnX,
-      y:Math.max(90,Math.min(innerHeight-90,other.y)),
-      vx:attackDir*360,
-      t:1.8,
+      y:Math.max(90,Math.min(innerHeight-90,f.y+8)),
+      vx:attackDir*345,
+      t:1.75,
       hit:false
     });
     comboEl.textContent='ナマズさん突進!';
@@ -1941,53 +1943,12 @@
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
 
-      catfishCharges.forEach(n=>{
-      ctx.save(); ctx.translate(n.x,n.y); if(n.vx<0)ctx.scale(-1,1);
-      ctx.fillStyle='#4b5352'; ctx.beginPath(); ctx.ellipse(0,0,72,34,0,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#68716f'; ctx.beginPath(); ctx.ellipse(47,-2,30,23,0,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(48,-8,5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(49,-8,2.5,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='#697574'; ctx.lineWidth=2.5; ctx.beginPath();
-      ctx.moveTo(52,2);ctx.quadraticCurveTo(68,-6,78,4);
-      ctx.moveTo(52,6);ctx.quadraticCurveTo(68,14,80,9);ctx.stroke();
-      ctx.restore();
-
-      ctx.save();
-      ctx.globalAlpha=.8;
-      ctx.fillStyle='#dffcff';
-      ctx.font='bold 11px sans-serif';
-      ctx.textAlign='center';
-      ctx.fillText('ナマズさん!',n.x,n.y-42);
-      ctx.restore();
-    });
-
     siltClouds.forEach(s=>{
         s.t-=dt;
         s.radius+=34*dt;
         s.y-=5*dt;
       });
       siltClouds=siltClouds.filter(s=>s.t>0);
-
-      siltClouds.forEach(s=>{
-      const a=Math.max(0,s.t/s.life);
-      ctx.save();
-
-      // 水が少し茶色く濁る程度。派手な土煙にはしない。
-      ctx.globalAlpha=.34*a;
-      ctx.fillStyle='#8a6848';
-      ctx.beginPath();
-      ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
-      ctx.fill();
-
-      ctx.globalAlpha=.22*a;
-      ctx.fillStyle='#b08a62';
-      ctx.beginPath();
-      ctx.ellipse(s.x-10,s.y-12,s.radius*.75,s.radius*.42,-.25,0,Math.PI*2);
-      ctx.ellipse(s.x+12,s.y-9,s.radius*.65,s.radius*.36,.2,0,Math.PI*2);
-      ctx.fill();
-
-      ctx.restore();
-    });
 
     guardWaves.forEach(w=>{
         w.t-=dt;
@@ -2016,6 +1977,73 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    // ナマズさん：背景・キャラの後に描くので姿が消えない
+    catfishCharges.forEach(n=>{
+      ctx.save();
+      ctx.translate(n.x,n.y);
+      if(n.vx<0) ctx.scale(-1,1);
+
+      ctx.fillStyle='#46535a';
+      ctx.beginPath();
+      ctx.ellipse(0,0,72,34,0,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle='#687a80';
+      ctx.beginPath();
+      ctx.ellipse(47,-2,30,23,0,0,Math.PI*2);
+      ctx.fill();
+
+      // 尾びれ
+      ctx.fillStyle='#3f4a50';
+      ctx.beginPath();
+      ctx.moveTo(-62,0);
+      ctx.lineTo(-90,-24);
+      ctx.lineTo(-83,0);
+      ctx.lineTo(-90,24);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle='#fff';
+      ctx.beginPath();
+      ctx.arc(48,-8,5,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle='#111';
+      ctx.beginPath();
+      ctx.arc(49,-8,2.5,0,Math.PI*2);
+      ctx.fill();
+
+      // ヒゲ
+      ctx.strokeStyle='#82959a';
+      ctx.lineWidth=3;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(55,2); ctx.quadraticCurveTo(82,-8,98,4);
+      ctx.moveTo(55,7); ctx.quadraticCurveTo(82,18,100,10);
+      ctx.stroke();
+
+      ctx.restore();
+    });
+
+    // 水底の土煙も描画フェーズへ移動
+    siltClouds.forEach(s=>{
+      const a=Math.max(0,s.t/s.life);
+      ctx.save();
+      ctx.globalAlpha=.34*a;
+      ctx.fillStyle='#8a6848';
+      ctx.beginPath();
+      ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.globalAlpha=.22*a;
+      ctx.fillStyle='#b08a62';
+      ctx.beginPath();
+      ctx.ellipse(s.x-10,s.y-12,s.radius*.75,s.radius*.42,-.25,0,Math.PI*2);
+      ctx.ellipse(s.x+12,s.y-9,s.radius*.65,s.radius*.36,.2,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
 
     aquaTornadoes.forEach(t=>{
       const alpha=Math.max(0,t.t/t.life);
