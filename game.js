@@ -19,6 +19,7 @@
   let particles = [];
   let hitRings = [];
   let guardWaves = [];
+  let aquaTornadoes = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -171,6 +172,7 @@
       // 必殺技
       this.specialT=0;
       this.specialType=null;
+      this.specialHitDone=false;
 
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
@@ -195,6 +197,7 @@
         if(this.specialT<=0){
           this.specialT=0;
           this.specialType=null;
+          this.specialHitDone=false;
         }
       }
       if (this.attackT>0) {
@@ -251,8 +254,60 @@
 
       if(this.throwState){
         this.spinAngle += this.throwState.spinSpeed * dt;
+      } else if(this.specialType==='screwDive'){
+        this.spinAngle += this.face*13.5*dt;
       } else {
         this.spinAngle *= Math.pow(.03, dt);
+      }
+
+      // ガブリエル：スクリューダイブ
+      // 下降中は身体そのものに当たり判定。
+      if(this.specialType==='screwDive' && !this.specialHitDone){
+        const other=this.isPlayer?enemy:player;
+        const active=this.specialT<=.60 && this.specialT>=.08 && this.vy>40;
+        if(other && active){
+          const hitDist=Math.hypot(other.x-this.x,other.y-this.y);
+          if(hitDist < other.radius + 42){
+            this.specialHitDone=true;
+            damageHit(this,other,9.0*this.damageMul,175*this.face,145);
+          }
+        }
+      }
+
+      // 必殺技の赤いオーラが出ている間は、手足そのものに当たり判定を持たせる。
+      // 1回の必殺技につき1ヒット。見た目と判定の時間を一致させる。
+      if(this.specialType && !this.specialHitDone){
+        const other = this.isPlayer ? enemy : player;
+
+        if(other){
+          if(this.specialType==='uppercut'){
+            // 溜めが終わって上昇し始めてから赤い拳が有効。
+            const active = this.specialT<=.54 && this.specialT>=.08;
+            if(active){
+              const hx=this.x + this.face*48;
+              const hy=this.y - 22;
+              const hitDist=Math.hypot(other.x-hx, other.y-hy);
+
+              if(hitDist < other.radius + 28){
+                this.specialHitDone=true;
+                damageHit(this,other,8.0*this.damageMul,90*this.face,-230);
+              }
+            }
+          }else if(this.specialType==='dropkick'){
+            // 突進開始後、赤い足が消える直前まで有効。
+            const active = this.specialT<=.475 && this.specialT>=.06;
+            if(active){
+              const fx=this.x + this.face*61;
+              const fy=this.y + 39;
+              const hitDist=Math.hypot(other.x-fx, other.y-fy);
+
+              if(hitDist < other.radius + 31){
+                this.specialHitDone=true;
+                damageHit(this,other,10.0*this.damageMul,240*this.face,-35);
+              }
+            }
+          }
+        }
       }
 
       this.x += this.vx * dt;
@@ -468,7 +523,9 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(22,22);
-        if(this.attackVariant==='up'){
+        if(this.specialType==='aquaTornado'){
+          ctx.lineTo(48,-34);
+        }else if(this.attackVariant==='up'){
           ctx.lineTo(48,-22);
         }else{
           ctx.lineTo(59,8);
@@ -476,13 +533,13 @@
         ctx.stroke();
         ctx.restore();
 
-        if(this.specialType==='uppercut'){
+        if(this.specialType==='uppercut' && this.specialT<=.54 && this.specialT>=.08){
           drawBurningAura(48,-22,13,18,-.35);
         }
       }
 
       // キックは脚だけ前へ
-      if(this.attack==='kick' && this.specialType!=='dropkick'){
+      if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='screwDive'){
         ctx.save();
         ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
         ctx.strokeStyle='#61d357';
@@ -512,7 +569,23 @@
         ctx.stroke();
         ctx.restore();
 
-        drawBurningAura(61,39,25,13,-.12);
+        if(this.specialT<=.475 && this.specialT>=.06){
+          drawBurningAura(61,39,25,13,-.12);
+        }
+      }
+
+      if(this.specialType==='screwDive'){
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=13;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        // 斜め下へ蹴り込む片脚
+        ctx.moveTo(15,47);
+        ctx.lineTo(55,74);
+        ctx.stroke();
+        ctx.restore();
       }
 
       if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0) || (this.tongueClashTarget && this.tongueClashTimer>0)){
@@ -807,6 +880,8 @@
     particles=[];
     hitRings=[];
     guardWaves=[];
+    aquaTornadoes=[];
+    aquaTornadoes=[];
 
     if(practiceExitButton) practiceExitButton.hidden=false;
 
@@ -853,12 +928,86 @@
     return 'mid';
   }
 
+  function pointToSegmentDistance(px,py,x1,y1,x2,y2){
+    const vx=x2-x1, vy=y2-y1;
+    const wx=px-x1, wy=py-y1;
+    const vv=vx*vx+vy*vy || 1;
+    let t=(wx*vx+wy*vy)/vv;
+    t=Math.max(0,Math.min(1,t));
+    const cx=x1+vx*t, cy=y1+vy*t;
+    return Math.hypot(px-cx,py-cy);
+  }
+
+  function specialAquaTornado(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    const dir=f.face;
+    f.specialType='aquaTornado';
+    f.specialT=.78;
+    f.specialHitDone=false;
+    f.attack='punch';
+    f.attackVariant='up';
+    f.attackT=.78;
+
+    // 手元から斜め前上へ。画面上端を越える長さにしておく。
+    const startX=f.x+dir*35;
+    const startY=f.y-6;
+    const length=Math.max(innerWidth,innerHeight)*1.05;
+    const dx=dir*.68;
+    const dy=-.74;
+
+    aquaTornadoes.push({
+      owner:f,
+      startX,startY,
+      endX:startX+dx*length,
+      endY:startY+dy*length,
+      dir,
+      t:.72,
+      life:.72,
+      width:28,
+      hit:false
+    });
+
+    comboEl.textContent='アクアトルネード!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='アクアトルネード!') comboEl.textContent='';
+    },650);
+
+    return true;
+  }
+
+  function specialScrewDive(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    f.specialType='screwDive';
+    f.specialT=.72;
+    f.specialHitDone=false;
+    f.attack='kick';
+    f.attackVariant='down';
+    f.attackT=.72;
+
+    // 少し溜めてから斜め前下へ回転しながら急降下
+    setTimeout(()=>{
+      if(!f || gameOver) return;
+      f.vx += f.face*300;
+      f.vy += 360;
+    },115);
+
+    comboEl.textContent='スクリューダイブ!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='スクリューダイブ!') comboEl.textContent='';
+    },650);
+
+    return true;
+  }
+
   function specialUppercut(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
     const other=f.isPlayer?enemy:player;
     f.specialType='uppercut';
     f.specialT=.72;
+    f.specialHitDone=false;
     f.attack='punch';
     f.attackVariant='up';
     f.attackT=.72;
@@ -868,11 +1017,6 @@
       if(!f || gameOver) return;
       f.vy=-520;
       f.vx+=f.face*70;
-
-      const dist=Math.hypot(other.x-f.x, other.y-f.y);
-      if(dist<105 && other.y<f.y+35){
-        damageHit(f,other,8.0*f.damageMul,90*f.face,-230);
-      }
 
       comboEl.textContent='バーニングアッパー!';
       setTimeout(()=>{
@@ -889,6 +1033,7 @@
     const other=f.isPlayer?enemy:player;
     f.specialType='dropkick';
     f.specialT=.62;
+    f.specialHitDone=false;
     f.attack='kick';
     f.attackVariant='mid';
     f.attackT=.62;
@@ -898,11 +1043,6 @@
       if(!f || gameOver) return;
       f.vx += f.face*470;
       f.vy *= .25;
-
-      const dist=Math.hypot(other.x-f.x, other.y-f.y);
-      if(dist<130 && Math.abs(other.y-f.y)<80){
-        damageHit(f,other,10.0*f.damageMul,240*f.face,-35);
-      }
 
       comboEl.textContent='バーニングキック!';
       setTimeout(()=>{
@@ -914,21 +1054,41 @@
   }
 
   function trySpecial(f,kind){
-    if(!f || f.type!=='green') return false;
+    if(!f) return false;
 
-    // ↓ ↑ ＋ パンチ
-    if(kind==='punch' && hasCommand(['down','up'],720)){
-      clearCommand();
-      return specialUppercut(f);
+    // ミカエル（green）
+    if(f.type==='green'){
+      if(kind==='punch' && hasCommand(['down','up'],720)){
+        clearCommand();
+        return specialUppercut(f);
+      }
+
+      const back=f.face>0?'left':'right';
+      const forward=f.face>0?'right':'left';
+      if(kind==='kick' && hasCommand([back,forward],720)){
+        clearCommand();
+        return specialDropKick(f);
+      }
     }
 
-    // 後ろ → 前 ＋ キック
-    // faceに応じて「後ろ」「前」を決める
-    const back=f.face>0?'left':'right';
-    const forward=f.face>0?'right':'left';
-    if(kind==='kick' && hasCommand([back,forward],720)){
-      clearCommand();
-      return specialDropKick(f);
+    // ガブリエル（blue）
+    if(f.type==='blue'){
+      const backDown=f.face>0?'downLeft':'downRight';
+      const forwardUp=f.face>0?'upRight':'upLeft';
+      const backUp=f.face>0?'upLeft':'upRight';
+      const forwardDown=f.face>0?'downRight':'downLeft';
+
+      // ↙ ↗ ＋ パンチ
+      if(kind==='punch' && hasCommand([backDown,forwardUp],780)){
+        clearCommand();
+        return specialAquaTornado(f);
+      }
+
+      // ↖ ↘ ＋ キック
+      if(kind==='kick' && hasCommand([backUp,forwardDown],780)){
+        clearCommand();
+        return specialScrewDive(f);
+      }
     }
 
     return false;
@@ -1292,6 +1452,38 @@
       player.update(dt);enemy.update(dt);
 
       // ガード3連打で出る小さな水の波。
+      aquaTornadoes.forEach(t=>{
+        t.t-=dt;
+
+        // 発生中は持ち主の手元に根元を追従
+        const owner=t.owner;
+        if(owner){
+          const length=Math.max(innerWidth,innerHeight)*1.05;
+          const dx=owner.face*.68;
+          const dy=-.74;
+          t.startX=owner.x+owner.face*35;
+          t.startY=owner.y-6;
+          t.endX=t.startX+dx*length;
+          t.endY=t.startY+dy*length;
+          t.dir=owner.face;
+        }
+
+        const target=owner && owner.isPlayer ? enemy : player;
+        if(!t.hit && target){
+          const d=pointToSegmentDistance(
+            target.x,target.y,
+            t.startX,t.startY,t.endX,t.endY
+          );
+
+          // 水流全体が当たり判定
+          if(d < target.radius + t.width){
+            t.hit=true;
+            damageHit(owner,target,7.0*owner.damageMul,125*owner.face,-125);
+          }
+        }
+      });
+      aquaTornadoes=aquaTornadoes.filter(t=>t.t>0);
+
       guardWaves.forEach(w=>{
         w.t-=dt;
         w.x += w.dir*285*dt;
@@ -1319,6 +1511,63 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    aquaTornadoes.forEach(t=>{
+      const alpha=Math.max(0,t.t/t.life);
+      const x1=t.startX, y1=t.startY, x2=t.endX, y2=t.endY;
+      const dx=x2-x1, dy=y2-y1;
+      const len=Math.hypot(dx,dy) || 1;
+      const nx=-dy/len, ny=dx/len;
+
+      ctx.save();
+      ctx.globalCompositeOperation='lighter';
+
+      // 中心の太い水流
+      ctx.globalAlpha=.25*alpha;
+      ctx.strokeStyle='#77e8ff';
+      ctx.lineWidth=30;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(x1,y1);
+      ctx.lineTo(x2,y2);
+      ctx.stroke();
+
+      // 竜巻らしい螺旋ライン
+      for(let s=0;s<3;s++){
+        ctx.globalAlpha=(.55-.12*s)*alpha;
+        ctx.strokeStyle=s===0?'#d8fbff':(s===1?'#69d9ff':'#239eea');
+        ctx.lineWidth=5-s;
+        ctx.beginPath();
+
+        const steps=28;
+        for(let i=0;i<=steps;i++){
+          const u=i/steps;
+          const baseX=x1+dx*u;
+          const baseY=y1+dy*u;
+          const wave=Math.sin(u*Math.PI*8 + performance.now()/110 + s*2.1);
+          const amp=10+u*16;
+          const px=baseX+nx*wave*amp;
+          const py=baseY+ny*wave*amp;
+          if(i===0) ctx.moveTo(px,py);
+          else ctx.lineTo(px,py);
+        }
+        ctx.stroke();
+      }
+
+      // 小さな泡
+      for(let i=0;i<8;i++){
+        const u=((performance.now()/900)+(i/8))%1;
+        const bx=x1+dx*u+nx*Math.sin(i*2.2)*14;
+        const by=y1+dy*u+ny*Math.sin(i*2.2)*14;
+        ctx.globalAlpha=.48*alpha;
+        ctx.fillStyle='#dffcff';
+        ctx.beginPath();
+        ctx.arc(bx,by,2.5+(i%3),0,Math.PI*2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    });
 
     guardWaves.forEach(w=>{
       const a=Math.max(0,w.t/w.life);

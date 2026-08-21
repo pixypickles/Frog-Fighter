@@ -232,3 +232,24 @@ button{font:inherit;color:inherit}
   font-size:10px;
   line-height:1.35;
 }
+
+/* v2.0: 必殺技名など上部メッセージが途中で切れないようにする */
+#comboText{
+  min-width:180px;
+  max-width:28vw;
+  flex:0 0 auto;
+  white-space:nowrap;
+  overflow:visible;
+  font-size:clamp(11px,1.8vw,21px);
+  line-height:1.05;
+  letter-spacing:-.02em;
+  text-align:center;
+}
+
+@media (max-width:760px){
+  #comboText{
+    min-width:145px;
+    max-width:30vw;
+    font-size:clamp(10px,1.65vw,17px);
+  }
+}
