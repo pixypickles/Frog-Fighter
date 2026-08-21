@@ -351,9 +351,8 @@
         f.attack='tongue';
         f.attackT=.28;
 
-        // 下入力が強ければ床へ、それ以外は向いている壁へ叩きつける
-        const wantsFloor = f.isPlayer && input.y>.35;
-        const throwDir = f.face;
+        // 2回目の舌は、相手を自分の後方へ回転させながら投げ飛ばす。
+        const throwDir = -f.face;
 
         target.throwState={
           owner:f,
@@ -361,13 +360,9 @@
         };
         target.spinAngle=0;
 
-        if(wantsFloor){
-          target.vx = throwDir*150;
-          target.vy = 620;
-        }else{
-          target.vx = throwDir*720;
-          target.vy = 90;
-        }
+        // 少し上向きに放り、後方の壁へ叩きつけやすくする。
+        target.vx = throwDir*720;
+        target.vy = -115;
 
         target.stun=.55;
         f.tonguePullTarget=null;

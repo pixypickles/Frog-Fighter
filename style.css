@@ -39,13 +39,16 @@ button{font:inherit;color:inherit}
 .stick-base{position:absolute;left:18px;bottom:10px;width:clamp(110px,18vw,170px);height:clamp(110px,18vw,170px);border-radius:50%;background:rgba(255,255,255,.14);border:3px solid rgba(255,255,255,.32)}
 .stick-knob{position:absolute;width:46%;height:46%;left:27%;top:27%;border-radius:50%;background:rgba(255,255,255,.58);box-shadow:0 4px 12px #0004}
 .buttons{position:absolute;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));width:min(43vw,390px);height:min(55vh,240px);pointer-events:auto}
-.action{position:absolute;border:0;border-radius:50%;width:clamp(70px,11vw,105px);height:clamp(70px,11vw,105px);font-size:clamp(12px,1.8vw,18px);font-weight:1000;box-shadow:0 5px 0 rgba(0,0,0,.25);background:rgba(255,255,255,.75);color:#123}
+.action{position:absolute;border:0;border-radius:50%;width:clamp(70px,11vw,105px);height:clamp(70px,11vw,105px);font-size:clamp(12px,1.8vw,18px);font-weight:1000;box-shadow:0 5px 0 rgba(0,0,0,.25);background:rgba(255,255,255,.38);color:#123}
 .action:active,.action.pressed{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
-.punch{right:29%;bottom:2%}.kick{right:2%;bottom:25%;background:#ffd166}.tongue{right:55%;bottom:27%;background:#ff7aa2}.guard{right:31%;bottom:53%;background:#a8e6ff}
+.punch{right:29%;bottom:2%;background:rgba(255,255,255,.34)}
+.kick{right:2%;bottom:25%;background:rgba(255,209,102,.46)}
+.tongue{right:55%;bottom:27%;background:rgba(255,122,162,.46)}
+.guard{right:31%;bottom:53%;background:rgba(168,230,255,.46)}
 .restart-btn{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);border:0;border-radius:999px;padding:14px 28px;background:#ffcf4a;color:#453500;font-weight:1000;font-size:22px}
 
 #portraitOverlay{display:none;position:fixed;inset:0;background:linear-gradient(#52cedd,#096e87);z-index:50;align-items:center;justify-content:center;flex-direction:column;text-align:center;font-size:22px;font-weight:900}
-#portraitOverlay div{font-size:80px;margin-bottom:16px}
+#portraitOverlay .portrait-frog{font-size:80px;margin-bottom:16px}
 @media (orientation:portrait) and (max-width:900px){#portraitOverlay{display:flex}}
 @media (min-width:901px){#desktopStart{display:block}}
 @media (max-width:900px){#desktopStart{display:none}}
@@ -72,4 +75,16 @@ button{font:inherit;color:inherit}
   font-weight:1000;
   letter-spacing:.12em;
   text-shadow:0 2px 3px rgba(0,0,0,.28);
+}
+
+#portraitOverlay .portrait-version{
+  margin-top:14px;
+  padding:6px 14px;
+  border-radius:999px;
+  border:2px solid rgba(255,255,255,.5);
+  background:rgba(0,45,60,.3);
+  font-size:14px;
+  font-weight:1000;
+  letter-spacing:.12em;
+  text-shadow:0 2px 3px rgba(0,0,0,.25);
 }
