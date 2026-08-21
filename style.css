@@ -387,3 +387,11 @@ button{font:inherit;color:inherit}
   font-weight:700;
   opacity:.76;
 }
+
+.leaf-mini-hud{
+  position:fixed; top:10px; left:50%; transform:translateX(-50%);
+  z-index:50; display:flex; gap:14px; align-items:center;
+  padding:7px 14px; border-radius:18px;
+  background:rgba(0,35,48,.68); border:1px solid rgba(255,255,255,.35);
+  color:#fff; font-size:13px; font-weight:900; pointer-events:none;
+}

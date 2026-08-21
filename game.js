@@ -11,6 +11,13 @@
   const comboEl = document.getElementById('comboText');
   const restartButton = document.getElementById('restartButton');
   const practiceExitButton = document.getElementById('practiceExitButton');
+  const leafMiniHud=document.getElementById('leafMiniHud');
+  const leafMiniTimeEl=document.getElementById('leafMiniTime');
+  const leafMiniScoreEl=document.getElementById('leafMiniScore');
+  const guardMiniHud=document.getElementById('guardMiniHud');
+  const guardMiniTimeEl=document.getElementById('guardMiniTime');
+  const guardMiniScoreEl=document.getElementById('guardMiniScore');
+  const guardMiniMissEl=document.getElementById('guardMiniMiss');
 
   let selectedFighter = 'green';
   let running = false;
@@ -24,6 +31,15 @@
   let catfishCharges = [];
   let pressureBlades = [];
   let burstWaves = [];
+  let leafTargets=[];
+  let leafMiniActive=false;
+  let leafMiniTime=60;
+  let leafMiniScore=0;
+  let leafSpawnTimer=0;
+  let guardTargets=[];
+  let guardMiniActive=false;
+  let guardMiniTime=60, guardMiniScore=0, guardMiniMiss=0, guardSpawnTimer=0;
+  let guardMiniGuardTapTime=-9999;
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -75,6 +91,26 @@
     startGame();
   };
 
+  const minigameBtn=document.getElementById('minigameBtn');
+  if(minigameBtn){
+    const openLeafMini=(e)=>{
+      if(e){e.preventDefault();e.stopPropagation();}
+      startLeafMiniGame();
+    };
+    minigameBtn.addEventListener('pointerup',openLeafMini);
+    minigameBtn.addEventListener('click',(e)=>{
+      if(window.PointerEvent)return;
+      openLeafMini(e);
+    });
+  }
+
+  const justGuardMiniBtn=document.getElementById('justGuardMiniBtn');
+  if(justGuardMiniBtn){
+    const openGuardMini=e=>{if(e){e.preventDefault();e.stopPropagation();}startGuardMiniGame();};
+    justGuardMiniBtn.addEventListener('pointerup',openGuardMini);
+    justGuardMiniBtn.addEventListener('click',e=>{if(window.PointerEvent)return;openGuardMini(e);});
+  }
+
   const practiceBtn=document.getElementById('practiceBtn');
   if(practiceBtn){
     const openPractice=(e)=>{
@@ -100,8 +136,13 @@
       e.stopPropagation();
 
       gameMode='battle';
+      leafMiniActive=false;
+      guardMiniActive=false;
+      if(leafMiniHud) leafMiniHud.hidden=true;
+      if(guardMiniHud) guardMiniHud.hidden=true;
       if(practiceLabel) practiceLabel.style.display='none';
       practiceExitButton.hidden=true;
+      practiceExitButton.textContent='練習終了';
       comboEl.textContent='';
       show('select');
     });
@@ -109,6 +150,8 @@
 
   restartButton.onclick = () => {
     if(gameMode==='practice') startPractice();
+    else if(gameMode==='leafMini') startLeafMiniGame();
+    else if(gameMode==='guardMini') startGuardMiniGame();
     else startGame();
   };
 
@@ -266,6 +309,8 @@
       this.crayfishRushStep=0;
       this.crayfishRushLastHit=0;
       this.crayfishSmashDone=false;
+      this.crayfishSmashQueued=false;
+      this.crayfishSmashQueueT=0;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -387,6 +432,24 @@
             damageHit(this,other,(last?4.0:2.2)*this.damageMul,
                       (last?145:45)*this.face,last?105:35);
           }
+        }
+      }
+
+      // ボトムスマッシュ予約中：水底へ着くまで自動降下
+      if(this.crayfishSmashQueued){
+        this.crayfishSmashQueueT-=dt;
+        this.vx*=Math.pow(.20,dt);
+        this.vy=Math.max(this.vy,380);
+
+        if(this.y>=innerHeight-128){
+          this.specialType=null;
+          this.specialT=0;
+          executeCrayfishBottomSmash(this);
+        }else if(this.crayfishSmashQueueT<=0){
+          this.crayfishSmashQueued=false;
+          this.specialType=null;
+          this.specialT=0;
+          comboEl.textContent='';
         }
       }
 
@@ -1333,7 +1396,7 @@
   }
 
   let player, enemy;
-  let gameMode='battle'; // battle | practice
+  let gameMode='battle'; // battle | practice | leafMini | guardMini
   let practiceLabel=null;
   const input={
     x:0,y:0,
@@ -1469,6 +1532,152 @@
     }
   }
 
+
+  function spawnLeafTarget(){
+    leafTargets.push({
+      x:innerWidth+45,
+      y:80+Math.random()*Math.max(100,innerHeight-170),
+      vx:-(115+Math.random()*130),
+      r:16+Math.random()*11,
+      rot:Math.random()*Math.PI*2,
+      spin:(Math.random()-.5)*2.4,
+      hit:false
+    });
+  }
+
+  function startLeafMiniGame(){
+    gameMode='leafMini';
+    gameOver=false;
+    restartButton.hidden=true;
+    comboHits=0; comboTimer=0; comboEl.textContent='';
+
+    show('game');
+    resize();
+
+    player=new Fighter(innerWidth*.25,innerHeight*.5,true,selectedFighter);
+    enemy=new PracticeDummy();
+    enemy.x=-5000; enemy.y=-5000;
+
+    leafTargets=[];
+    leafMiniActive=true;
+    leafMiniTime=60;
+    leafMiniScore=0;
+    leafSpawnTimer=0;
+
+    if(leafMiniHud) leafMiniHud.hidden=false;
+    if(guardMiniHud) guardMiniHud.hidden=true;
+    guardMiniActive=false;
+    if(leafMiniTimeEl) leafMiniTimeEl.textContent='60.0';
+    if(leafMiniScoreEl) leafMiniScoreEl.textContent='0';
+
+    if(practiceExitButton){
+      practiceExitButton.hidden=false;
+      practiceExitButton.textContent='ミニゲーム終了';
+    }
+    if(practiceLabel) practiceLabel.style.display='none';
+
+    bubbles=Array.from({length:28},()=>({
+      x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:2+Math.random()*6,s:10+Math.random()*26
+    }));
+
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
+    siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
+
+    for(let i=0;i<4;i++) spawnLeafTarget();
+
+    running=true;
+    last=performance.now();
+    updateHud();
+  }
+
+  function endLeafMiniGame(){
+    if(!leafMiniActive) return;
+    leafMiniActive=false;
+    comboEl.textContent=`RESULT ${leafMiniScore} 枚!`;
+    restartButton.hidden=false;
+  }
+
+  function checkLeafHits(){
+    if(!leafMiniActive || !player) return;
+
+    // 攻撃が出ている間、キャラ前方に簡易攻撃判定。
+    // 必殺技でも通常技でも葉っぱを壊せる。
+    const attacking =
+      player.attackT>0 ||
+      player.specialT>0 ||
+      player.tongueT>0;
+
+    if(!attacking) return;
+
+    let rx=105, ry=75;
+    if(player.type==='piranha'){rx=125;ry=85;}
+    if(player.type==='crayfish'){rx=125;ry=90;}
+    if(player.specialType){rx+=35;ry+=20;}
+
+    leafTargets.forEach(leaf=>{
+      if(leaf.hit) return;
+      const dx=(leaf.x-player.x)*player.face;
+      const dy=Math.abs(leaf.y-player.y);
+
+      if(dx>-35 && dx<rx && dy<ry){
+        leaf.hit=true;
+        leafMiniScore++;
+        if(leafMiniScoreEl) leafMiniScoreEl.textContent=String(leafMiniScore);
+
+        for(let i=0;i<6;i++){
+          particles.push({
+            x:leaf.x,y:leaf.y,
+            vx:(Math.random()-.5)*160,
+            vy:(Math.random()-.5)*120,
+            t:.42+Math.random()*.22,
+            r:2+Math.random()*4,
+            type:'guard'
+          });
+        }
+      }
+    });
+  }
+
+  function spawnGuardTarget(){
+    guardTargets.push({
+      x:innerWidth+55,
+      y:90+Math.random()*Math.max(120,innerHeight-190),
+      vx:-(190+Math.random()*115),
+      r:12+Math.random()*5,
+      phase:Math.random()*Math.PI*2,
+      kind:Math.random()<.72?'fish':'bug',
+      resolved:false
+    });
+  }
+
+  function startGuardMiniGame(){
+    gameMode='guardMini'; gameOver=false; restartButton.hidden=true;
+    comboHits=0; comboTimer=0; comboEl.textContent='';
+    show('game'); resize();
+    player=new Fighter(innerWidth*.25,innerHeight*.5,true,selectedFighter);
+    enemy=new PracticeDummy(); enemy.x=-5000; enemy.y=-5000;
+    guardTargets=[]; guardMiniActive=true; leafMiniActive=false;
+    guardMiniTime=60; guardMiniScore=0; guardMiniMiss=0; guardSpawnTimer=.8;
+    guardMiniGuardTapTime=-9999;
+    if(leafMiniHud) leafMiniHud.hidden=true;
+    if(guardMiniHud) guardMiniHud.hidden=false;
+    if(guardMiniTimeEl) guardMiniTimeEl.textContent='60.0';
+    if(guardMiniScoreEl) guardMiniScoreEl.textContent='0';
+    if(guardMiniMissEl) guardMiniMissEl.textContent='0';
+    if(practiceExitButton){practiceExitButton.hidden=false;practiceExitButton.textContent='ミニゲーム終了';}
+    if(practiceLabel) practiceLabel.style.display='none';
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; siltClouds=[];
+    catfishCharges=[]; pressureBlades=[]; burstWaves=[];
+    running=true; last=performance.now(); updateHud();
+  }
+
+  function endGuardMiniGame(){
+    if(!guardMiniActive)return;
+    guardMiniActive=false;
+    comboEl.textContent=`JUST GUARD ${guardMiniScore} 回!`;
+    restartButton.hidden=false;
+  }
 
   function startPractice(){
     gameMode='practice';
@@ -1893,8 +2102,11 @@
     return true;
   }
 
-  function specialCrayfishBottomSmash(f){
-    if(gameOver || f.stun>0 || f.specialT>0) return false;
+  function executeCrayfishBottomSmash(f){
+    if(gameOver || !f) return false;
+
+    f.crayfishSmashQueued=false;
+    f.crayfishSmashQueueT=0;
     f.specialType='crayfishBottomSmash';
     f.specialT=.72;
     f.attack='kick';
@@ -1904,40 +2116,55 @@
     comboEl.textContent='ボトムスマッシュ!';
     setTimeout(()=>{if(comboEl.textContent==='ボトムスマッシュ!')comboEl.textContent='';},720);
 
-    // 少し下へ踏み込んで、水底を叩く
     setTimeout(()=>{
       if(gameOver || !f) return;
-      f.vy += 150;
       f.crayfishSmashDone=true;
 
       const floorY=innerHeight-35;
-      // 大量の土煙：一時的に画面全体が茶色く霞む規模
-      const cloudCount=42;
-      for(let i=0;i<cloudCount;i++){
+      for(let i=0;i<42;i++){
         const life=1.65+Math.random()*.75;
         siltClouds.push({
           x:Math.random()*innerWidth,
           y:floorY-Math.random()*Math.max(150,innerHeight*.58),
-          t:life, life:life, radius:45+Math.random()*70, mega:true
+          t:life,life,radius:45+Math.random()*70,mega:true
         });
       }
-      // 叩いた地点にはさらに濃い土の柱
       for(let i=0;i<14;i++){
         const life=1.4+Math.random()*.55;
         siltClouds.push({
           x:Math.max(0,Math.min(innerWidth,f.x+(Math.random()-.5)*360)),
           y:floorY-Math.random()*180,
-          t:life, life:life, radius:65+Math.random()*75, mega:true
+          t:life,life,radius:65+Math.random()*75,mega:true
         });
       }
 
-      // 地面近くの相手に小ダメージ＋浮かせ
       const other=f.isPlayer?enemy:player;
       if(other && Math.abs(other.x-f.x)<145 && other.y>innerHeight-145){
         damageHit(f,other,5.8*f.damageMul,70*f.face,-135);
       }
     },220);
 
+    return true;
+  }
+
+  function specialCrayfishBottomSmash(f){
+    if(gameOver || f.stun>0 || f.specialT>0 || f.crayfishSmashQueued) return false;
+
+    // 水底すれすれなら、その場で発動してよい
+    if(f.y>=innerHeight-128){
+      return executeCrayfishBottomSmash(f);
+    }
+
+    // 高い場所ではまず水底へ降りる。空中で土煙は出さない。
+    f.crayfishSmashQueued=true;
+    f.crayfishSmashQueueT=2.0;
+    f.specialType='crayfishSmashDrop';
+    f.specialT=2.0;
+    f.attack=null;
+    f.attackT=0;
+    f.vx*=.25;
+    f.vy=Math.max(f.vy,360);
+    comboEl.textContent='水底へ…';
     return true;
   }
 
@@ -2369,7 +2596,7 @@
   }
 
   function endGame(playerWon){
-    if(gameMode==='practice') return;
+    if(gameMode==='practice' || gameMode==='leafMini' || gameMode==='guardMini') return;
     gameOver=true; running=true;
     comboEl.textContent = playerWon ? 'YOU WIN!' : 'YOU LOSE';
     restartButton.hidden=false;
@@ -2377,7 +2604,7 @@
 
   function updateHud(){
     playerHpEl.style.width=Math.max(0,Math.min(100,player.hp))+'%';
-    enemyHpEl.style.width=(gameMode==='practice'?100:Math.max(0,Math.min(100,enemy.hp)))+'%';
+    enemyHpEl.style.width=((gameMode==='practice'||gameMode==='leafMini')?100:Math.max(0,Math.min(100,enemy.hp)))+'%';
   }
 
   // Touch stick
@@ -2514,6 +2741,7 @@
             // ガード開始直後 約0.28秒はジャストガード受付。
             player.guard=true;
             player.guardStartT=.28;
+            if(guardMiniActive) guardMiniGuardTapTime=performance.now();
 
             // 650ms以内に3回で水押し波。ダメージは0、吹き飛ばしのみ。
             if(player.guardTapTimes.length>=3){
@@ -2565,7 +2793,11 @@
     if(e.key==='j')attack(player,'punch');
     if(e.key==='k')attack(player,'kick');
     if(e.key==='l')attack(player,'tongue');
-    if(e.key==='i'&&player)player.guard=true;
+    if(e.key==='i'&&player){
+      player.guard=true;
+      player.guardStartT=.28;
+      if(guardMiniActive) guardMiniGuardTapTime=performance.now();
+    }
   });
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key==='i'&&player)player.guard=false});
 
@@ -2674,6 +2906,85 @@
       player.update(dt);enemy.update(dt);
 
       // ラファエルさんの水圧カッター更新
+      if(guardMiniActive){
+      guardTargets.forEach(t=>{
+        ctx.save(); ctx.translate(t.x,t.y);
+        if(t.kind==='fish'){
+          ctx.fillStyle='#8fd5cf'; ctx.beginPath();
+          ctx.ellipse(0,0,t.r*1.25,t.r*.65,0,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(t.r,0); ctx.lineTo(t.r*2,-t.r*.75);
+          ctx.lineTo(t.r*2,t.r*.75); ctx.closePath(); ctx.fill();
+          ctx.fillStyle='#17282c';ctx.beginPath();ctx.arc(-t.r*.55,-2,2,0,Math.PI*2);ctx.fill();
+        }else{
+          ctx.fillStyle='#b8d56f';ctx.beginPath();ctx.ellipse(0,0,t.r*.8,t.r*.48,0,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='#dff0a8';ctx.lineWidth=2;ctx.beginPath();
+          ctx.moveTo(-t.r*.3,-3);ctx.lineTo(-t.r*1.25,-t.r*.9);
+          ctx.moveTo(-t.r*.3,3);ctx.lineTo(-t.r*1.25,t.r*.9);
+          ctx.moveTo(t.r*.3,-3);ctx.lineTo(t.r*1.2,-t.r*.9);
+          ctx.moveTo(t.r*.3,3);ctx.lineTo(t.r*1.2,t.r*.9);ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+
+    if(leafMiniActive){
+        leafMiniTime-=dt;
+        leafSpawnTimer-=dt;
+
+        if(leafMiniTimeEl) leafMiniTimeEl.textContent=Math.max(0,leafMiniTime).toFixed(1);
+
+        if(leafSpawnTimer<=0 && leafTargets.length<12){
+          spawnLeafTarget();
+          leafSpawnTimer=.38+Math.random()*.30;
+        }
+
+        leafTargets.forEach(leaf=>{
+          leaf.x+=leaf.vx*dt;
+          leaf.rot+=leaf.spin*dt;
+        });
+
+        leafTargets=leafTargets.filter(leaf=>!leaf.hit && leaf.x>-80);
+        checkLeafHits();
+
+        if(leafMiniTime<=0){
+          leafMiniTime=0;
+          endLeafMiniGame();
+        }
+      }
+
+      if(guardMiniActive){
+        guardMiniTime-=dt; guardSpawnTimer-=dt;
+        if(guardMiniTimeEl) guardMiniTimeEl.textContent=Math.max(0,guardMiniTime).toFixed(1);
+        if(guardSpawnTimer<=0 && guardTargets.length<4){
+          spawnGuardTarget();
+          const progress=1-Math.max(0,guardMiniTime)/60;
+          guardSpawnTimer=Math.max(.48,1.05-progress*.38)+Math.random()*.32;
+        }
+        guardTargets.forEach(t=>{
+          t.x+=t.vx*dt; t.phase+=dt*5; t.y+=Math.sin(t.phase)*12*dt;
+          if(t.resolved)return;
+          const dx=t.x-player.x, dy=Math.abs(t.y-player.y);
+          if(dx<player.radius+t.r+13 && dx>-player.radius-t.r-10 && dy<player.radius+t.r+8){
+            t.resolved=true;
+            const elapsed=performance.now()-guardMiniGuardTapTime;
+            if(player.guard && elapsed>=0 && elapsed<=220){
+              guardMiniScore++;
+              if(guardMiniScoreEl)guardMiniScoreEl.textContent=String(guardMiniScore);
+              comboEl.textContent='JUST GUARD!';
+              spawnImpact(player.x+player.face*30,player.y,'guard');
+            }else{
+              guardMiniMiss++;
+              if(guardMiniMissEl)guardMiniMissEl.textContent=String(guardMiniMiss);
+              comboEl.textContent='MISS';
+              player.hurtFace='both'; player.hurtFaceT=.28;
+              spawnImpact(player.x+player.face*24,player.y,'hit');
+            }
+          }
+        });
+        guardTargets=guardTargets.filter(t=>!t.resolved && t.x>-80);
+        if(guardMiniTime<=0){guardMiniTime=0;endGuardMiniGame();}
+      }
+
       pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -2756,6 +3067,25 @@
         }
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
+
+    if(leafMiniActive){
+      leafTargets.forEach(leaf=>{
+        ctx.save();
+        ctx.translate(leaf.x,leaf.y);
+        ctx.rotate(leaf.rot);
+        ctx.fillStyle='#62b453';
+        ctx.strokeStyle='#2d7b37';
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.ellipse(0,0,leaf.r*1.2,leaf.r*.65,-.25,0,Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.strokeStyle='#d9ee91';
+        ctx.beginPath();
+        ctx.moveTo(-leaf.r*.9,0); ctx.lineTo(leaf.r*.9,0);
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
 
     burstWaves.forEach(b=>{b.t-=dt;});
       burstWaves=burstWaves.filter(b=>b.t>0);

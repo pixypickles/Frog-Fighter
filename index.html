@@ -15,7 +15,7 @@
       <h1>カエルファイター</h1>
       <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
       <p class="rotate-note">スマホを横持ちしてください</p>
-      <div class="start-version">VERSION 5.1</div>
+      <div class="start-version">VERSION 5.3</div>
       <button id="desktopStart" class="soft-btn">PCで試す</button>
     </section>
 
@@ -84,7 +84,8 @@
       <div class="mode-menu">
         <button id="fightButton" class="primary-btn">対戦開始</button>
         <button id="practiceBtn" class="practice-btn">操作練習</button>
-        <button class="future-btn" disabled>ミニゲーム　COMING SOON</button>
+        <button id="minigameBtn" class="practice-btn">ミニゲーム①：葉っぱ割り</button>
+      <button id="justGuardMiniBtn" class="practice-btn">ミニゲーム②：ジャストガード</button>
       </div>
 
       <p class="auto-attack-note">自動補正：相手が上ならパンチが上向き / 相手が下ならキックが下向き</p>
@@ -96,6 +97,11 @@
 
     <section id="gameScreen" class="screen game-screen">
       <canvas id="gameCanvas"></canvas>
+      <div id="leafMiniHud" class="leaf-mini-hud" hidden>
+        <strong>LEAF BREAK</strong>
+        <span>残り <b id="leafMiniTime">60.0</b> 秒</span>
+        <span>スコア <b id="leafMiniScore">0</b></span>
+      </div>
       <div id="hud">
         <div class="hp-wrap left">
           <span>PLAYER</span>
@@ -129,7 +135,7 @@
     <div id="portraitOverlay">
       <div class="portrait-frog">🐸</div>
       <strong>スマホを横持ちしてください</strong>
-      <span class="portrait-version">VERSION 5.1</span>
+      <span class="portrait-version">VERSION 5.3</span>
     </div>
   </div>
   <script src="game.js"></script>
