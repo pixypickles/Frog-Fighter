@@ -326,7 +326,10 @@
       }
 
       this.vy += this.sink * dt;
-      if(this.dashT>0){
+      if(this.specialType==='urielTackle'){
+        this.vx *= Math.pow(.90, dt);
+        this.vy *= Math.pow(.84, dt);
+      }else if(this.dashT>0){
         this.vx *= Math.pow(.82, dt);
         this.vy *= Math.pow(.86, dt);
       }else{
@@ -518,7 +521,7 @@
       if(this.bodyScale && this.bodyScale!==1) ctx.scale(this.bodyScale,this.bodyScale);
 
       // ガーディアンタックル中は少し前傾
-      if(this.specialType==='urielTackle') ctx.rotate(this.face*.16);
+      if(this.specialType==='urielTackle') ctx.rotate(this.face*.22);
 
       // ヘルラッシュ中は少し低い姿勢
       if(this.specialType==='hellRush' && this.specialT>.55){
@@ -1703,9 +1706,10 @@
   function specialUrielTackle(f){
     if(gameOver || f.stun>0 || f.specialT>0) return false;
     f.guard=false; f.tackleArmedT=0;
-    f.specialType='urielTackle'; f.specialT=.72;
-    f.attack='punch'; f.attackT=.72; f.tackleHit=false;
-    f.vx += f.face*430;
+    f.specialType='urielTackle'; f.specialT=.96;
+    f.attack='punch'; f.attackT=.96; f.tackleHit=false;
+    // v4.3: より速く、より長く突進
+    f.vx += f.face*560;
     comboEl.textContent='ガーディアンタックル!';
     setTimeout(()=>{if(comboEl.textContent==='ガーディアンタックル!')comboEl.textContent='';},720);
     return true;
