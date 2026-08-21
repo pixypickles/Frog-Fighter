@@ -1024,7 +1024,10 @@
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
-    for(let i=0;i<10;i++) spawnLeafTarget(i,true);
+    for(let i=0;i<12;i++){
+      spawnLeafTarget(i,true);
+      if(leafTargets[i]) leafTargets[i].x=innerWidth*(.38+(i%6)*.11);
+    }
 
     running=true;
     last=performance.now();
@@ -2435,38 +2438,6 @@
     });
   }
 
-  function safeSeparateFighters(a,b){
-    if(!a || !b) return;
-
-    // Fighter同士だけ。練習用ダミーやミニゲームでは使わない。
-    if(typeof a.radius!=='number' || typeof b.radius!=='number') return;
-    if(typeof a.x!=='number' || typeof b.x!=='number') return;
-
-    // 投げ中は演出優先
-    if(a.throwState || b.throwState) return;
-
-    const dx=b.x-a.x;
-    const minX=(a.radius+b.radius)*0.72;
-
-    // 横方向に十分離れていれば何もしない
-    if(Math.abs(dx)>=minX) return;
-
-    const sign=dx>=0 ? 1 : -1;
-    const overlap=minX-Math.abs(dx);
-    const push=overlap*.5;
-
-    a.x-=sign*push;
-    b.x+=sign*push;
-
-    // 押し合っている時だけ横速度を少し弱める
-    if(typeof a.vx==='number') a.vx*=.82;
-    if(typeof b.vx==='number') b.vx*=.82;
-
-    // 画面内に戻す
-    a.x=Math.max(42,Math.min(innerWidth-42,a.x));
-    b.x=Math.max(42,Math.min(innerWidth-42,b.x));
-  }
-
   function drawBackground(dt){
     const themes=[
       {top:'#42c7d6',mid:'#10849a',bottom:'#075469',floor:'#075047',plant:'#16855f',shaft:'rgba(255,255,220,.07)'},
@@ -2536,12 +2507,6 @@
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
 
-      // 対戦系のみ重なり防止。描画やミニゲームには影響させない。
-      if((gameMode==='battle' || gameMode==='story') &&
-         player instanceof Fighter &&
-         enemy instanceof Fighter){
-        safeSeparateFighters(player,enemy);
-      }
 
 
 
@@ -2609,6 +2574,17 @@
         });
         guardTargets=guardTargets.filter(t=>!t.resolved && t.x>-80);
         if(guardMiniTime<=0){guardMiniTime=0;endGuardMiniGame();}
+      }
+
+      if(leafMiniActive){
+        // 保険：葉っぱが0枚になっても必ず次を生成する
+        if(leafTargets.length===0){
+          for(let i=0;i<5;i++){
+            spawnLeafTarget(i,false);
+            const t=leafTargets[leafTargets.length-1];
+            if(t) t.x=innerWidth+35+i*95;
+          }
+        }
       }
 
       pressureBlades.forEach(p=>{
