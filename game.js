@@ -615,7 +615,7 @@
         ctx.lineWidth=12;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(0,8);
+        ctx.moveTo(22,22);
         if(this.specialType==='aquaTornado'){
           ctx.lineTo(48,-34);
         }else if(this.attackVariant==='up'){
@@ -639,7 +639,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(0,8);
+        ctx.moveTo(15,48);
         if(this.attackVariant==='down'){
           ctx.lineTo(52,78);
         }else{
@@ -657,7 +657,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(0,8);
+        ctx.moveTo(14,46);
         ctx.lineTo(67,39);
         ctx.stroke();
         ctx.restore();
@@ -674,7 +674,7 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(0,8);
+        ctx.moveTo(15,47);
         ctx.lineTo(48,68);
         ctx.stroke();
         ctx.restore();
@@ -725,7 +725,7 @@
         if(hammer){
           // 最後は頭上から振り下ろす
           ctx.beginPath();
-          ctx.moveTo(0,8);
+          ctx.moveTo(18,-2);
           ctx.lineTo(28,-42);
           ctx.lineTo(45,28);
           ctx.stroke();
@@ -767,7 +767,7 @@
         ctx.lineWidth=8;
         ctx.lineCap='round';
         ctx.beginPath();
-        // 口の中央から出す
+        // 舌だけは口の中央から出す
         ctx.moveTo(0,8);
         ctx.lineTo(len,8);
         ctx.stroke();
@@ -1936,7 +1936,7 @@
       catfishCharges.forEach(n=>{
         n.t-=dt; n.x+=n.vx*dt;
         const target=n.target;
-        if(!n.hit && target && Math.hypot(target.x-n.x,target.y-n.y)<target.radius+52){
+        if(!n.hit && target && Math.hypot(target.x-(n.x+Math.sign(n.vx)*55),target.y-n.y)<target.radius+72){
           n.hit=true;
           damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
         }
@@ -1978,49 +1978,69 @@
     drawBackground(dt);
     player.draw();enemy.draw();
 
-    // ナマズさん：背景・キャラの後に描くので姿が消えない
+    // ナマズさん：リリスさんの後ろから突進する、細長いナマズ
     catfishCharges.forEach(n=>{
       ctx.save();
       ctx.translate(n.x,n.y);
       if(n.vx<0) ctx.scale(-1,1);
 
+      // 長い胴体
       ctx.fillStyle='#46535a';
       ctx.beginPath();
-      ctx.ellipse(0,0,72,34,0,0,Math.PI*2);
+      ctx.ellipse(-10,0,92,28,0,0,Math.PI*2);
       ctx.fill();
 
-      ctx.fillStyle='#687a80';
+      // 平たい頭
+      ctx.fillStyle='#64777d';
       ctx.beginPath();
-      ctx.ellipse(47,-2,30,23,0,0,Math.PI*2);
+      ctx.ellipse(66,0,43,25,0,0,Math.PI*2);
       ctx.fill();
 
       // 尾びれ
       ctx.fillStyle='#3f4a50';
       ctx.beginPath();
-      ctx.moveTo(-62,0);
-      ctx.lineTo(-90,-24);
-      ctx.lineTo(-83,0);
-      ctx.lineTo(-90,24);
+      ctx.moveTo(-95,0);
+      ctx.lineTo(-128,-27);
+      ctx.lineTo(-118,0);
+      ctx.lineTo(-128,27);
       ctx.closePath();
       ctx.fill();
 
+      // 背びれ
+      ctx.fillStyle='#56666c';
+      ctx.beginPath();
+      ctx.moveTo(-28,-25);
+      ctx.lineTo(0,-45);
+      ctx.lineTo(18,-24);
+      ctx.closePath();
+      ctx.fill();
+
+      // 目
       ctx.fillStyle='#fff';
       ctx.beginPath();
-      ctx.arc(48,-8,5,0,Math.PI*2);
+      ctx.arc(79,-8,5,0,Math.PI*2);
       ctx.fill();
-
       ctx.fillStyle='#111';
       ctx.beginPath();
-      ctx.arc(49,-8,2.5,0,Math.PI*2);
+      ctx.arc(80,-8,2.5,0,Math.PI*2);
       ctx.fill();
 
-      // ヒゲ
-      ctx.strokeStyle='#82959a';
+      // 口
+      ctx.strokeStyle='#29343a';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(93,5);
+      ctx.lineTo(111,7);
+      ctx.stroke();
+
+      // 長いヒゲ
+      ctx.strokeStyle='#8da0a5';
       ctx.lineWidth=3;
       ctx.lineCap='round';
       ctx.beginPath();
-      ctx.moveTo(55,2); ctx.quadraticCurveTo(82,-8,98,4);
-      ctx.moveTo(55,7); ctx.quadraticCurveTo(82,18,100,10);
+      ctx.moveTo(91,0); ctx.quadraticCurveTo(128,-14,154,-3);
+      ctx.moveTo(91,4); ctx.quadraticCurveTo(130,20,158,10);
+      ctx.moveTo(83,-1); ctx.quadraticCurveTo(118,-32,144,-29);
       ctx.stroke();
 
       ctx.restore();
