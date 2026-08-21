@@ -1573,14 +1573,22 @@
   }
 
 
-  function spawnLeafTarget(){
+  function spawnLeafTarget(slot=0){
+    // 右端から左端へ、攻撃しやすい高さに葉っぱを流す。
+    // 1枚の耐久は常に1。
+    const laneCount=5;
+    const lane=slot%laneCount;
+    const top=innerHeight*.25;
+    const bottom=innerHeight*.72;
+    const y=top+(bottom-top)*(lane/(laneCount-1));
+
     leafTargets.push({
-      x:innerWidth+40+Math.random()*90,
-      y:85+Math.random()*Math.max(120,innerHeight-175),
-      vx:-(125+Math.random()*95),
-      r:16+Math.random()*9,
+      x:innerWidth+45+slot*75,
+      y:y+(Math.random()-.5)*20,
+      vx:-(150+Math.random()*45),
+      r:19+Math.random()*5,
       rot:Math.random()*Math.PI*2,
-      spin:(Math.random()-.5)*1.8,
+      spin:(Math.random()-.5)*1.2,
       hp:1,
       hit:false
     });
@@ -1625,7 +1633,7 @@
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
-    for(let i=0;i<7;i++) spawnLeafTarget();
+    for(let i=0;i<10;i++) spawnLeafTarget(i);
 
     running=true;
     last=performance.now();
@@ -1685,13 +1693,15 @@
   }
 
   function spawnGuardTarget(){
+    const targetY=player ? player.y : innerHeight*.5;
     guardTargets.push({
-      x:innerWidth+55,
-      y:90+Math.random()*Math.max(120,innerHeight-190),
-      vx:-(175+Math.random()*95),
-      r:12+Math.random()*5,
+      x:innerWidth+60,
+      y:targetY,
+      targetY:targetY,
+      vx:-(150+Math.random()*35),
+      r:14+Math.random()*3,
       phase:Math.random()*Math.PI*2,
-      kind:Math.random()<.72?'fish':'bug',
+      kind:Math.random()<.75?'fish':'bug',
       resolved:false
     });
   }
@@ -1703,7 +1713,7 @@
     player=new Fighter(innerWidth*.25,innerHeight*.5,true,selectedFighter);
     enemy=new PracticeDummy(); enemy.x=-5000; enemy.y=-5000;
     guardTargets=[]; guardMiniActive=true; leafMiniActive=false;
-    guardMiniTime=60; guardMiniScore=0; guardMiniMiss=0; guardSpawnTimer=.8;
+    guardMiniTime=60; guardMiniScore=0; guardMiniMiss=0; guardSpawnTimer=2.2;
     guardMiniGuardTapTime=-9999;
     if(leafMiniHud) leafMiniHud.hidden=true;
     if(guardMiniHud) guardMiniHud.hidden=false;
@@ -1715,9 +1725,7 @@
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; siltClouds=[];
     catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
-    // 開始直後から見えるよう、最初に3体出しておく
-    spawnGuardTarget();
-    spawnGuardTarget();
+    // 最初は1体だけ。いきなり複数が同時に来ないようにする。
     spawnGuardTarget();
 
     running=true; last=performance.now(); updateHud();
@@ -3102,9 +3110,9 @@
 
         if(leafMiniTimeEl) leafMiniTimeEl.textContent=Math.max(0,leafMiniTime).toFixed(1);
 
-        if(leafSpawnTimer<=0 && leafTargets.length<18){
-          spawnLeafTarget();
-          leafSpawnTimer=.22+Math.random()*.22;
+        if(leafSpawnTimer<=0 && leafTargets.length<22){
+          spawnLeafTarget(0);
+          leafSpawnTimer=.24+Math.random()*.16;
         }
 
         leafTargets.forEach(leaf=>{
@@ -3124,19 +3132,26 @@
       if(guardMiniActive){
         guardMiniTime-=dt; guardSpawnTimer-=dt;
         if(guardMiniTimeEl) guardMiniTimeEl.textContent=Math.max(0,guardMiniTime).toFixed(1);
-        if(guardSpawnTimer<=0 && guardTargets.length<4){
+        const progress=1-Math.max(0,guardMiniTime)/60;
+        // 最初の20秒は必ず1体ずつ。以降も最大2体まで。
+        const maxTargets=guardMiniTime>40 ? 1 : 2;
+        if(guardSpawnTimer<=0 && guardTargets.length<maxTargets){
           spawnGuardTarget();
-          const progress=1-Math.max(0,guardMiniTime)/60;
-          guardSpawnTimer=Math.max(.48,1.05-progress*.38)+Math.random()*.32;
+          // 序盤は約2秒間隔。後半だけ少しずつ短くする。
+          guardSpawnTimer=Math.max(.95,2.05-progress*.95)+Math.random()*.35;
         }
         guardTargets.forEach(t=>{
-          t.x+=t.vx*dt; t.phase+=dt*5; t.y+=Math.sin(t.phase)*12*dt;
+          t.x+=t.vx*dt;
+          t.phase+=dt*4;
+          // 全て主人公へ向かう。上下移動してもゆっくり追尾する。
+          t.targetY=player.y;
+          t.y+=(t.targetY-t.y)*Math.min(1,dt*3.2);
           if(t.resolved)return;
           const dx=t.x-player.x, dy=Math.abs(t.y-player.y);
           if(dx<player.radius+t.r+13 && dx>-player.radius-t.r-10 && dy<player.radius+t.r+8){
             t.resolved=true;
             const elapsed=performance.now()-guardMiniGuardTapTime;
-            if(player.guard && elapsed>=0 && elapsed<=220){
+            if(player.guard && elapsed>=0 && elapsed<=300){
               guardMiniScore++;
               if(guardMiniScoreEl)guardMiniScoreEl.textContent=String(guardMiniScore);
               comboEl.textContent='JUST GUARD!';
