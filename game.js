@@ -263,6 +263,9 @@
       this.piranhaRushHit=false;
       this.piranhaDivePhase=0;
       this.piranhaDiveTargetX=0;
+      this.crayfishRushStep=0;
+      this.crayfishRushLastHit=0;
+      this.crayfishSmashDone=false;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -383,6 +386,20 @@
             const last=this.luciferDiveHits===4;
             damageHit(this,other,(last?4.0:2.2)*this.damageMul,
                       (last?145:45)*this.face,last?105:35);
+          }
+        }
+      }
+
+      // アスモデウスさん：ハサミをバタつかせながら突進、多段ヒット
+      if(this.specialType==='crayfishRush'){
+        const other=this.isPlayer?enemy:player;
+        const now=performance.now();
+        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+28){
+          if(now-(this.crayfishRushLastHit||0)>135){
+            this.crayfishRushLastHit=now;
+            this.crayfishRushStep++;
+            const fin=this.crayfishRushStep>=5;
+            damageHit(this,other,(fin?3.6:1.8)*this.damageMul,(fin?145:32)*this.face,fin?-35:0);
           }
         }
       }
@@ -554,19 +571,19 @@
         if(this.flash>0) ctx.globalAlpha=.55;
 
         // 胴体
-        ctx.fillStyle='#677d89';
+        ctx.fillStyle='#d63b32';
         ctx.beginPath();
         ctx.ellipse(0,8,43,28,0,0,Math.PI*2);
         ctx.fill();
 
         // 腹側
-        ctx.fillStyle='#a8bac2';
+        ctx.fillStyle='#e97850';
         ctx.beginPath();
         ctx.ellipse(4,16,29,15,0,0,Math.PI*2);
         ctx.fill();
 
         // 尾びれ
-        ctx.fillStyle='#566b76';
+        ctx.fillStyle='#2fae55';
         ctx.beginPath();
         ctx.moveTo(-37,6);
         ctx.lineTo(-67,-16);
@@ -576,12 +593,19 @@
         ctx.fill();
 
         // 背びれ
-        ctx.fillStyle='#4d626c';
+        ctx.fillStyle='#279c4c';
         ctx.beginPath();
         ctx.moveTo(-8,-17);
         ctx.lineTo(8,-39);
         ctx.lineTo(18,-15);
         ctx.closePath();
+        ctx.fill();
+
+        // 緑の斑点模様
+        ctx.fillStyle='#35b95d';
+        ctx.beginPath();
+        ctx.ellipse(-10,-3,11,7,-.25,0,Math.PI*2);
+        ctx.ellipse(10,15,8,5,.35,0,Math.PI*2);
         ctx.fill();
 
         // 目
@@ -671,19 +695,28 @@
         ctx.fill();
 
         // ハサミ
-        const clawExtend=this.attack==='punch'?20:0;
+        let clawExtend=0;
+        let clawY=7;
+        if(this.attack==='crayfishStab') clawExtend=28;
+        if(this.attack==='crayfishHammer') clawY=30;
+        if(this.attack==='crayfishUpper') clawY=-18;
+        if(this.specialType==='crayfishRush'){
+          clawExtend=18+Math.sin(performance.now()/45)*10;
+          clawY=Math.sin(performance.now()/55)*12;
+        }
+
         ctx.strokeStyle='#a94331';
         ctx.lineWidth=10;
         ctx.lineCap='round';
 
         ctx.beginPath();
-        ctx.moveTo(18,0); ctx.lineTo(42+clawExtend,8);
+        ctx.moveTo(18,0); ctx.lineTo(42+clawExtend,clawY);
         ctx.moveTo(-18,2); ctx.lineTo(-39,13);
         ctx.stroke();
 
         ctx.fillStyle='#c95b40';
         ctx.beginPath();
-        ctx.ellipse(48+clawExtend,7,18,13,.15,0,Math.PI*2);
+        ctx.ellipse(48+clawExtend,clawY,18,13,.15,0,Math.PI*2);
         ctx.ellipse(-45,13,17,12,-.15,0,Math.PI*2);
         ctx.fill();
 
@@ -703,12 +736,13 @@
         ctx.moveTo(-2,-28); ctx.quadraticCurveTo(-31,-49,-51,-37);
         ctx.stroke();
 
-        // キック相当：尾を振る
-        if(this.attack==='kick'){
+        // ボトムスマッシュ時は両ハサミを下へ
+        if(this.specialType==='crayfishBottomSmash'){
           ctx.strokeStyle='#7a2f24';
           ctx.lineWidth=12;
           ctx.beginPath();
-          ctx.moveTo(-8,43); ctx.lineTo(-48,56);
+          ctx.moveTo(12,5); ctx.lineTo(35,48);
+          ctx.moveTo(-12,7); ctx.lineTo(-28,50);
           ctx.stroke();
         }
 
@@ -1290,6 +1324,8 @@
     luciferTongueReadyUntil:0,
     punchTapTimes:[],
     tongueTapTimes:[],
+    crayfishComboStep:0,
+    crayfishComboTime:0,
     guardTapTimes:[],
     lastBackInputTime:0,
     purpleGuardCount:0,
@@ -1820,6 +1856,60 @@
   }
 
 
+  function specialCrayfishRush(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.specialType='crayfishRush';
+    f.specialT=1.05;
+    f.attack='punch';
+    f.attackT=1.05;
+    f.crayfishRushStep=0;
+    f.crayfishRushLastHit=0;
+    f.vx += f.face*360;
+
+    comboEl.textContent='クローラッシュ!';
+    setTimeout(()=>{if(comboEl.textContent==='クローラッシュ!')comboEl.textContent='';},750);
+    return true;
+  }
+
+  function specialCrayfishBottomSmash(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.specialType='crayfishBottomSmash';
+    f.specialT=.72;
+    f.attack='kick';
+    f.attackT=.72;
+    f.crayfishSmashDone=false;
+
+    comboEl.textContent='ボトムスマッシュ!';
+    setTimeout(()=>{if(comboEl.textContent==='ボトムスマッシュ!')comboEl.textContent='';},720);
+
+    // 少し下へ踏み込んで、水底を叩く
+    setTimeout(()=>{
+      if(gameOver || !f) return;
+      f.vy += 150;
+      f.crayfishSmashDone=true;
+
+      const floorY=innerHeight-35;
+      // 大量の土煙
+      for(let i=0;i<7;i++){
+        siltClouds.push({
+          x:Math.max(20,Math.min(innerWidth-20,f.x+(i-3)*28)),
+          y:floorY-2,
+          t:1.2+Math.random()*.35,
+          life:1.2+Math.random()*.35,
+          radius:30+Math.random()*14
+        });
+      }
+
+      // 地面近くの相手に小ダメージ＋浮かせ
+      const other=f.isPlayer?enemy:player;
+      if(other && Math.abs(other.x-f.x)<145 && other.y>innerHeight-145){
+        damageHit(f,other,5.8*f.damageMul,70*f.face,-135);
+      }
+    },220);
+
+    return true;
+  }
+
   function specialPiranhaRush(f){
     if(gameOver || f.stun>0 || f.specialT>0) return false;
     f.specialType='piranhaRush'; f.specialT=.72; f.attack='tongue'; f.attackT=.72;
@@ -1994,6 +2084,13 @@
       if(kind==='kick' && hasCommand(['down','up'],900)){ clearCommand(); return specialPiranhaDive(f,'kick'); }
     }
 
+    if(f.type==='crayfish'){
+      if(kind==='kick' && hasCommand(['down','down'],850)){
+        clearCommand();
+        return specialCrayfishBottomSmash(f);
+      }
+    }
+
     if(f.type==='yellow'){
       const forward=f.face>0?'right':'left';
       const downForward=f.face>0?'downRight':'downLeft';
@@ -2033,6 +2130,30 @@
   function attack(f, kind) {
     if(gameOver || f.guard) return;
 
+    // アスモデウスさん：前→パンチ→キック→パンチ
+    if(f.type==='crayfish'){
+      const now=performance.now();
+      const forwardHeld=(f.face>0 && input.x>.35)||(f.face<0 && input.x<-.35);
+
+      if(now-(input.crayfishComboTime||0)>900){
+        input.crayfishComboStep=0;
+      }
+
+      if(input.crayfishComboStep===0 && forwardHeld && kind==='punch'){
+        input.crayfishComboStep=1;
+        input.crayfishComboTime=now;
+      }else if(input.crayfishComboStep===1 && kind==='kick'){
+        input.crayfishComboStep=2;
+        input.crayfishComboTime=now;
+      }else if(input.crayfishComboStep===2 && kind==='punch'){
+        input.crayfishComboStep=0;
+        input.crayfishComboTime=0;
+        f.attackT=0;
+        f.attack=null;
+        if(specialCrayfishRush(f)) return;
+      }
+    }
+
     const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
 
     if(f.type==='purple' && kind==='tongue' && rapidTriple){
@@ -2062,16 +2183,37 @@
     }
 
     if(kind==='tongue' && f.type==='crayfish'){
-      f.attack='punch'; f.attackT=.38;
+      f.attack='crayfishStab'; f.attackT=.34;
       const other=f.isPlayer?enemy:player;
-      const dist=Math.hypot(other.x-f.x,other.y-f.y);
-      if(dist<92) setTimeout(()=>damageHit(f,other,5.2*f.damageMul,95*f.face,-8),120);
+      setTimeout(()=>{
+        if(!other)return;
+        const dx=(other.x-f.x)*f.face;
+        if(dx>0 && dx<105 && Math.abs(other.y-f.y)<58){
+          damageHit(f,other,4.8*f.damageMul,110*f.face,-5);
+        }
+      },105);
       return;
     }
 
     const other = f.isPlayer ? enemy : player;
     const dir=f.face;
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
+
+    if(f.type==='crayfish' && kind==='punch'){
+      f.attack='crayfishHammer'; f.attackT=.42;
+      if(dist<100 && Math.abs(other.y-f.y)<72){
+        setTimeout(()=>damageHit(f,other,5.6*f.damageMul,85*dir,110),150);
+      }
+      return;
+    }
+
+    if(f.type==='crayfish' && kind==='kick'){
+      f.attack='crayfishUpper'; f.attackT=.44;
+      if(dist<100 && Math.abs(other.y-f.y)<78){
+        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,80*dir,-145),155);
+      }
+      return;
+    }
 
     if(kind==='punch' || kind==='kick'){
       f.attackVariant=chooseAttackVariant(f,other,kind);
