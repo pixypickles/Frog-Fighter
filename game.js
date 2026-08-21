@@ -390,16 +390,33 @@
         }
       }
 
-      // アスモデウスさん：ハサミをバタつかせながら突進、多段ヒット
+      // アスモデウスさん：クローラッシュ
+      // 土煙の中でも上下だけ少し相手へ自動追尾する。
       if(this.specialType==='crayfishRush'){
         const other=this.isPlayer?enemy:player;
         const now=performance.now();
-        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+28){
-          if(now-(this.crayfishRushLastHit||0)>135){
-            this.crayfishRushLastHit=now;
-            this.crayfishRushStep++;
-            const fin=this.crayfishRushStep>=5;
-            damageHit(this,other,(fin?3.6:1.8)*this.damageMul,(fin?145:32)*this.face,fin?-35:0);
+
+        if(other){
+          const dy=other.y-this.y;
+          this.vy += Math.max(-90,Math.min(90,dy*2.2))*dt;
+
+          // 前方向の勢いを少し維持
+          if(Math.abs(this.vx)<300){
+            this.vx += this.face*160*dt;
+          }
+
+          if(Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+30){
+            if(now-(this.crayfishRushLastHit||0)>125){
+              this.crayfishRushLastHit=now;
+              this.crayfishRushStep++;
+              const fin=this.crayfishRushStep>=5;
+              damageHit(
+                this,other,
+                (fin?3.8:1.8)*this.damageMul,
+                (fin?155:34)*this.face,
+                fin?-40:0
+              );
+            }
           }
         }
       }
@@ -751,6 +768,11 @@
 
       // ウリエルさんは少し大柄
       if(this.bodyScale && this.bodyScale!==1) ctx.scale(this.bodyScale,this.bodyScale);
+
+      // クローラッシュ中は追尾角度に合わせてほんの少し傾く
+      if(this.specialType==='crayfishRush'){
+        ctx.rotate(Math.max(-.16,Math.min(.16,this.vy/520)));
+      }
 
       // ガーディアンタックル中は少し前傾
       if(this.specialType==='urielTackle') ctx.rotate(this.face*.22);
@@ -1863,7 +1885,8 @@
     f.attackT=1.05;
     f.crayfishRushStep=0;
     f.crayfishRushLastHit=0;
-    f.vx += f.face*360;
+    f.vx += f.face*390;
+    f.vy *= .35;
 
     comboEl.textContent='クローラッシュ!';
     setTimeout(()=>{if(comboEl.textContent==='クローラッシュ!')comboEl.textContent='';},750);
@@ -2138,31 +2161,14 @@
   function attack(f, kind) {
     if(gameOver || f.guard) return;
 
-    // アスモデウスさん：前→パンチ→キック→パンチ
-    if(f.type==='crayfish'){
-      const now=performance.now();
-      const forwardHeld=(f.face>0 && input.x>.35)||(f.face<0 && input.x<-.35);
-
-      if(now-(input.crayfishComboTime||0)>900){
-        input.crayfishComboStep=0;
-      }
-
-      if(input.crayfishComboStep===0 && forwardHeld && kind==='punch'){
-        input.crayfishComboStep=1;
-        input.crayfishComboTime=now;
-      }else if(input.crayfishComboStep===1 && kind==='kick'){
-        input.crayfishComboStep=2;
-        input.crayfishComboTime=now;
-      }else if(input.crayfishComboStep===2 && kind==='punch'){
-        input.crayfishComboStep=0;
-        input.crayfishComboTime=0;
-        f.attackT=0;
-        f.attack=null;
-        if(specialCrayfishRush(f)) return;
-      }
+    const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
+    // アスモデウスさん：パンチ×3でクローラッシュ
+    if(f.type==='crayfish' && kind==='punch' && rapidTriple){
+      f.attackT=0;
+      f.attack=null;
+      if(specialCrayfishRush(f)) return;
     }
 
-    const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
 
     if(f.type==='purple' && kind==='tongue' && rapidTriple){
       // 1・2回目の通常舌硬直を3回目でキャンセル。
