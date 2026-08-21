@@ -65,9 +65,21 @@
 
   const practiceBtn=document.getElementById('practiceBtn');
   if(practiceBtn){
-    practiceBtn.onclick=()=>{
+    const openPractice=(e)=>{
+      if(e){
+        e.preventDefault();
+        e.stopPropagation();
+      }
       startPractice();
     };
+
+    // スマホ・PC共通。touch/clickの二重発火を避ける。
+    practiceBtn.addEventListener('pointerup',openPractice);
+    practiceBtn.addEventListener('click',(e)=>{
+      // pointerイベント非対応環境の保険
+      if(window.PointerEvent) return;
+      openPractice(e);
+    });
   }
 
   restartButton.onclick = () => {
@@ -393,8 +405,6 @@
         ctx.moveTo(22,22);
         if(this.attackVariant==='up'){
           ctx.lineTo(48,-22);
-        }else if(this.attackVariant==='down'){
-          ctx.lineTo(50,53);
         }else{
           ctx.lineTo(59,8);
         }
@@ -411,9 +421,7 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(15,48);
-        if(this.attackVariant==='up'){
-          ctx.lineTo(55,-5);
-        }else if(this.attackVariant==='down'){
+        if(this.attackVariant==='down'){
           ctx.lineTo(52,78);
         }else{
           ctx.lineTo(60,48);
@@ -711,17 +719,14 @@
   }
 
 
-  function chooseAttackVariant(f, other){
-    // プレイヤーはスティック上下を強めに入れていれば明示指定。
-    if(f.isPlayer){
-      if(input.y<-.42) return 'up';
-      if(input.y>.42) return 'down';
-    }
-
-    // 指定がなければ相手との上下差から自動補正。
+  function chooseAttackVariant(f, other, kind){
     const dy=other.y-f.y;
-    if(dy<-30) return 'up';
-    if(dy>30) return 'down';
+
+    // 初心者向けの自動補正だけに絞る。
+    // パンチは上方向だけ、キックは下方向だけ。
+    if(kind==='punch' && dy<-30) return 'up';
+    if(kind==='kick' && dy>30) return 'down';
+
     return 'mid';
   }
 
@@ -739,23 +744,23 @@
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
 
     if(kind==='punch' || kind==='kick'){
-      f.attackVariant=chooseAttackVariant(f,other);
+      f.attackVariant=chooseAttackVariant(f,other,kind);
     }
 
     if(kind==='punch'){
       f.attack='punch';f.attackT=.34;
       const v=f.attackVariant;
-      const yAim=v==='up'?-34:(v==='down'?34:0);
+      const yAim=v==='up'?-34:0;
       if(dist<88 && Math.abs((other.y-f.y)-yAim)<58){
-        const ky=v==='up'?-72:(v==='down'?70:-5);
+        const ky=v==='up'?-72:-5;
         setTimeout(()=>damageHit(f,other,2.6*f.damageMul,52*dir,ky),125);
       }
     } else if(kind==='kick'){
       f.attack='kick';f.attackT=.50;
       const v=f.attackVariant;
-      const yAim=v==='up'?-42:(v==='down'?42:0);
+      const yAim=v==='down'?42:0;
       if(dist<106 && Math.abs((other.y-f.y)-yAim)<72){
-        const ky=v==='up'?-125:(v==='down'?125:-21);
+        const ky=v==='down'?125:-21;
         setTimeout(()=>damageHit(f,other,5.2*f.damageMul,142*dir,ky),175);
       }
     } else if(kind==='tongue'){
@@ -1161,27 +1166,3 @@
   resize();
   requestAnimationFrame(loop);
 })();
-
-  // v1.5 mode menu
-  const practiceBtn=document.getElementById('practiceBtn');
-  if(practiceBtn){
-    practiceBtn.addEventListener('click',()=>{
-      // キャラ選択を飛ばさず、現在選択中のカエルで練習開始
-      startPractice();
-    });
-    practiceBtn.addEventListener('touchend',e=>{
-      e.preventDefault();
-      startPractice();
-    },{passive:false});
-  }
-
-  // キャラクター選択カードの下に、将来の専用必殺技欄を表示。
-  document.querySelectorAll('.char-card, .character-card, [data-char]').forEach((card,i)=>{
-    if(card.querySelector('.special-hint')) return;
-    const hint=document.createElement('div');
-    hint.className='special-hint';
-    hint.textContent=i===0
-      ? '専用必殺技：準備中　↓↘→＋パンチ 予定'
-      : '専用必殺技：準備中　←→＋舌 予定';
-    card.appendChild(hint);
-  });

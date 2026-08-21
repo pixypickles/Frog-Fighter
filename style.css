@@ -168,3 +168,42 @@ button{font:inherit;color:inherit}
   line-height:1.25;
   opacity:.82;
 }
+
+
+/* v1.7: キャラ選択画面は小さい横画面でも下まで見られる */
+#selectScreen.screen.active{
+  display:flex;
+  overflow-y:auto;
+  overflow-x:hidden;
+  justify-content:flex-start;
+  min-height:100%;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(28px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+
+#selectScreen h2{
+  flex:0 0 auto;
+  margin-top:4px;
+}
+
+#selectScreen .fighter-grid,
+#selectScreen .mode-menu,
+#selectScreen .auto-attack-note{
+  flex:0 0 auto;
+}
+
+#selectScreen .auto-attack-note{
+  padding-bottom:18px;
+}
+
+#practiceBtn{
+  position:relative;
+  z-index:3;
+  touch-action:manipulation;
+  cursor:pointer;
+}
