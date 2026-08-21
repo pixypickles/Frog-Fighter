@@ -123,40 +123,129 @@
 
       ctx.save();
       ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+
+      // 2頭身くらいの丸い胴体
+      ctx.fillStyle='#58bd50';
+      ctx.beginPath();
+      ctx.ellipse(0,31,30,34,0,0,Math.PI*2);
+      ctx.fill();
+
+      // お腹
+      ctx.fillStyle='#8ae47f';
+      ctx.beginPath();
+      ctx.ellipse(2,36,19,23,0,0,Math.PI*2);
+      ctx.fill();
+
+      // 後ろ脚：胴体から生やす
+      ctx.strokeStyle='#4aa944';
+      ctx.lineWidth=12;
+      ctx.lineCap='round';
+      ctx.lineJoin='round';
+      ctx.beginPath();
+      ctx.moveTo(-19,47); ctx.lineTo(-37,61); ctx.lineTo(-50,57);
+      ctx.moveTo(19,47); ctx.lineTo(37,61); ctx.lineTo(50,57);
+      ctx.stroke();
+
+      // 腕：胴体の横から
+      ctx.strokeStyle='#58bd50';
+      ctx.lineWidth=10;
+      ctx.beginPath();
+      ctx.moveTo(-23,22); ctx.lineTo(-38,34);
+      ctx.moveTo(23,22); ctx.lineTo(38,34);
+      ctx.stroke();
+
+      // 頭
       ctx.fillStyle='#63cf58';
-      ctx.beginPath(); ctx.ellipse(0,6,34,29,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0,-6,35,30,0,0,Math.PI*2);
+      ctx.fill();
+
+      // 目のふくらみ
       ctx.fillStyle='#7ce66f';
-      ctx.beginPath(); ctx.arc(-19,-18,16,0,Math.PI*2); ctx.arc(19,-18,16,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-19,-29,16,0,Math.PI*2);
+      ctx.arc(19,-29,16,0,Math.PI*2);
+      ctx.fill();
+
+      // 白目
       ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.arc(-19,-19,10,0,Math.PI*2); ctx.arc(19,-19,10,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-19,-30,10,0,Math.PI*2);
+      ctx.arc(19,-30,10,0,Math.PI*2);
+      ctx.fill();
+
+      // 黒目
       ctx.fillStyle='#182a2a';
-      ctx.beginPath(); ctx.arc(-16,-18,4,0,Math.PI*2); ctx.arc(22,-18,4,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='#255c31'; ctx.lineWidth=3; ctx.lineCap='round';
-      ctx.beginPath(); ctx.arc(0,3,14,.15*Math.PI,.85*Math.PI); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-16,-29,4,0,Math.PI*2);
+      ctx.arc(22,-29,4,0,Math.PI*2);
+      ctx.fill();
+
+      // ほっぺ
+      ctx.fillStyle='rgba(255,130,150,.42)';
+      ctx.beginPath();
+      ctx.arc(-24,2,5,0,Math.PI*2);
+      ctx.arc(24,2,5,0,Math.PI*2);
+      ctx.fill();
+
+      // 口
+      ctx.strokeStyle='#255c31';
+      ctx.lineWidth=3;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);
+      ctx.stroke();
+
       ctx.restore();
 
-      // limbs
-      ctx.strokeStyle='#50ae49'; ctx.lineWidth=9; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(-20,22); ctx.lineTo(-34,37); ctx.moveTo(20,22); ctx.lineTo(35,37); ctx.stroke();
-
+      // パンチは腕だけ前へ
       if(this.attack==='punch'){
-        ctx.strokeStyle='#61d357';ctx.lineWidth=12;
-        ctx.beginPath();ctx.moveTo(22,3);ctx.lineTo(52,0);ctx.stroke();
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=12;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(22,21);
+        ctx.lineTo(58,9);
+        ctx.stroke();
+        ctx.restore();
       }
+
+      // キックは脚だけ前へ
       if(this.attack==='kick'){
-        ctx.strokeStyle='#61d357';ctx.lineWidth=13;
-        ctx.beginPath();ctx.moveTo(17,24);ctx.lineTo(56,34);ctx.stroke();
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=13;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(17,47);
+        ctx.lineTo(62,50);
+        ctx.stroke();
+        ctx.restore();
       }
+
       if(this.tongueT>0){
         const target = this.isPlayer ? enemy : player;
         let len = Math.min(this.tongueRange, Math.abs(target.x-this.x));
-        ctx.strokeStyle='#ff718e';ctx.lineWidth=8;ctx.lineCap='round';
-        ctx.beginPath();ctx.moveTo(28,4);ctx.lineTo(28+len,4);ctx.stroke();
+        ctx.strokeStyle='#ff718e';
+        ctx.lineWidth=8;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(28,-2);
+        ctx.lineTo(28+len,-2);
+        ctx.stroke();
       }
+
       if(this.guard){
-        ctx.strokeStyle='rgba(185,235,255,.75)';ctx.lineWidth=8;
-        ctx.beginPath();ctx.arc(20,0,45,-1.25,1.25);ctx.stroke();
+        ctx.strokeStyle='rgba(185,235,255,.75)';
+        ctx.lineWidth=8;
+        ctx.beginPath();
+        ctx.arc(22,8,59,-1.25,1.25);
+        ctx.stroke();
       }
+
       ctx.restore();
     }
   }
