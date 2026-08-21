@@ -17,6 +17,7 @@
   let bubbles = [];
   let particles = [];
   let hitRings = [];
+  let guardWaves = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -84,6 +85,12 @@
       this.hurtFaceT=0;
       this.hurtFace='wink';
 
+      // ガード / 波
+      this.guardStartT=0;
+      this.guardTapTimes=[];
+      this.waveCooldown=0;
+      this.guardBreakT=0;
+
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
       this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
@@ -96,6 +103,9 @@
       if (this.stun>0) this.stun-=dt;
       if (this.flash>0) this.flash-=dt;
       if (this.hurtFaceT>0) this.hurtFaceT-=dt;
+      if (this.guardStartT>0) this.guardStartT-=dt;
+      if (this.waveCooldown>0) this.waveCooldown-=dt;
+      if (this.guardBreakT>0) this.guardBreakT-=dt;
       if (this.attackT>0) {
         this.attackT-=dt;
         if (this.attackT<=0) this.attack=null;
@@ -235,7 +245,7 @@
 
       // ニュートラル腕。
       // パンチ中・ガード中は通常腕を描かず、それぞれ専用ポーズに差し替える。
-      if(!this.guard){
+      if(!this.guard && this.attack!=='wave'){
         ctx.strokeStyle='#58bd50';
         ctx.lineWidth=10;
         ctx.beginPath();
@@ -260,7 +270,7 @@
       ctx.fill();
 
       // 目：通常時と被弾時で表情を変える
-      if(this.hurtFaceT>0){
+      if(this.hurtFaceT>0 || this.throwState){
         ctx.strokeStyle='#182a2a';
         ctx.lineWidth=4;
         ctx.lineCap='round';
@@ -313,7 +323,7 @@
       ctx.lineWidth=3;
       ctx.lineCap='round';
       ctx.beginPath();
-      if(this.hurtFaceT>0){
+      if(this.hurtFaceT>0 || this.throwState){
         ctx.arc(0,9,12,1.15*Math.PI,1.85*Math.PI);
       }else{
         ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);
@@ -360,6 +370,25 @@
         ctx.moveTo(28,-2);
         ctx.lineTo(28+len,-2);
         ctx.stroke();
+      }
+
+      if(this.attack==='wave'){
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#58bd50';
+        ctx.lineWidth=11;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        // 両手を胸から前へ押し出す
+        ctx.moveTo(-17,21); ctx.lineTo(13,17); ctx.lineTo(42,15);
+        ctx.moveTo(-15,31); ctx.lineTo(14,29); ctx.lineTo(42,28);
+        ctx.stroke();
+        ctx.fillStyle='#68cf5f';
+        ctx.beginPath();
+        ctx.arc(43,15,6,0,Math.PI*2);
+        ctx.arc(43,28,6,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
       }
 
       if(this.guard){
@@ -414,6 +443,7 @@
     }));
     particles=[];
     hitRings=[];
+    guardWaves=[];
     running=true; last=performance.now();
   }
 
@@ -481,6 +511,8 @@
           spinSpeed: throwDir*15
         };
         target.spinAngle=0;
+        target.hurtFace='both';
+        target.hurtFaceT=.7;
 
         // 少し上向きに放り、後方の壁へ叩きつけやすくする。
         target.vx = throwDir*720;
@@ -523,7 +555,22 @@
 
   function damageHit(attacker,target,dmg,kx,ky){
     if(gameOver) return;
+
+    // ガード直後の緩めの受付時間ならジャストガード。
+    // 攻撃側に少し長めの隙を作る。
+    const justGuard = target.guard && target.guardStartT>0;
     target.hit(dmg,kx,ky);
+
+    if(justGuard){
+      attacker.stun=Math.max(attacker.stun,.42);
+      attacker.attackT=Math.max(attacker.attackT,.42);
+      attacker.vx += -attacker.face*55;
+      spawnImpact(attacker.x,attacker.y,'guard');
+      comboEl.textContent='JUST GUARD!';
+      setTimeout(()=>{
+        if(comboEl.textContent==='JUST GUARD!') comboEl.textContent='';
+      },520);
+    }
     if(attacker.isPlayer && !target.guard){
       comboHits++; comboTimer=1.15;
       comboEl.textContent = comboHits>1 ? `${comboHits} HIT!` : '';
@@ -563,7 +610,23 @@
     const action=btn.dataset.action;
     const down=e=>{
       e.preventDefault();btn.classList.add('pressed');
-      if(action==='guard'){ if(player && player.stun<=0){player.guard=true;} }
+      if(action==='guard'){
+        if(player && player.stun<=0){
+          const now=performance.now();
+          player.guardTapTimes=player.guardTapTimes.filter(t=>now-t<650);
+          player.guardTapTimes.push(now);
+
+          // ガード開始直後 約0.28秒はジャストガード受付。
+          player.guard=true;
+          player.guardStartT=.28;
+
+          // 650ms以内に3回で水押し波。ダメージは0、吹き飛ばしのみ。
+          if(player.guardTapTimes.length>=3){
+            player.guardTapTimes=[];
+            guardWave(player);
+          }
+        }
+      }
       else if(player) attack(player,action);
     };
     const up=e=>{e.preventDefault();btn.classList.remove('pressed');if(action==='guard'&&player)player.guard=false};
@@ -604,6 +667,30 @@
       }
       enemy.guard = dist<90 && Math.random()<dt*.25;
     }
+  }
+
+  function guardWave(f){
+    if(!f || gameOver || f.waveCooldown>0) return;
+
+    f.waveCooldown=1.05;
+    f.guard=false;
+    f.attack='wave';
+    f.attackT=.48;
+
+    const dir=f.face;
+    guardWaves.push({
+      owner:f,
+      x:f.x+dir*34,
+      y:f.y+18,
+      dir,
+      r:18,
+      t:.48,
+      life:.48,
+      hit:false
+    });
+
+    // 水を両手で押した反動
+    f.vx += -dir*42;
   }
 
   function spawnImpact(x,y,type){
@@ -662,6 +749,27 @@
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
 
+      // ガード3連打で出る小さな水の波。
+      guardWaves.forEach(w=>{
+        w.t-=dt;
+        w.x += w.dir*245*dt;
+        w.r += 42*dt;
+
+        const target=w.owner.isPlayer?enemy:player;
+        if(!w.hit && target){
+          const dx=target.x-w.x, dy=target.y-w.y;
+          if(Math.hypot(dx,dy)<w.r+target.radius){
+            w.hit=true;
+            // ダメージ無し。水圧だけで押し返す。
+            target.vx += w.dir*235;
+            target.vy += -28;
+            target.stun=Math.max(target.stun,.13);
+            spawnImpact(target.x,target.y,'guard');
+          }
+        }
+      });
+      guardWaves=guardWaves.filter(w=>w.t>0);
+
       if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){comboHits=0;comboEl.textContent=''}}
     } else {
       player.update(dt);enemy.update(dt);
@@ -669,6 +777,35 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    guardWaves.forEach(w=>{
+      const a=Math.max(0,w.t/w.life);
+      ctx.save();
+      ctx.globalAlpha=a*.72;
+      ctx.strokeStyle='#d9f8ff';
+      ctx.lineWidth=7;
+      ctx.lineCap='round';
+
+      // 進行方向へ膨らむ短い水の波
+      ctx.beginPath();
+      if(w.dir>0){
+        ctx.arc(w.x,w.y,w.r,-1.05,1.05);
+      }else{
+        ctx.arc(w.x,w.y,w.r,Math.PI-1.05,Math.PI+1.05);
+      }
+      ctx.stroke();
+
+      ctx.globalAlpha=a*.42;
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      if(w.dir>0){
+        ctx.arc(w.x-w.dir*8,w.y,w.r+10,-.9,.9);
+      }else{
+        ctx.arc(w.x-w.dir*8,w.y,w.r+10,Math.PI-.9,Math.PI+.9);
+      }
+      ctx.stroke();
+      ctx.restore();
+    });
 
     particles.forEach(p=>{p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.92;p.vy*=.92;
       ctx.globalAlpha=Math.max(0,p.t/.42);ctx.fillStyle=p.type==='guard'?'#d9f5ff':'#fff3a3';
