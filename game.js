@@ -28,7 +28,7 @@
   const stats = {
     green:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
     blue:   { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 },
-    black:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
+    black:  { speed: 148, tongue: 225, damage: 1.22, sink: 9, hue: 0 },
     purple: { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 }
   };
 
@@ -176,6 +176,10 @@
       this.specialT=0;
       this.specialType=null;
       this.specialHitDone=false;
+      this.luciferGrabTarget=null;
+      this.luciferGrabT=0;
+      this.luciferRushHits=0;
+      this.luciferDiveHits=0;
 
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
@@ -260,6 +264,25 @@
         this.spinAngle += this.throwState.spinSpeed * dt;
       } else {
         this.spinAngle *= Math.pow(.03, dt);
+      }
+
+      // ルシファーさん：斜め下降キック連打。
+      if(this.specialType==='darknessRush' && this.luciferDiveHits<4){
+        const other=this.isPlayer?enemy:player;
+        const active=this.specialT<=.82 && this.specialT>=.12 && this.vy>30;
+        if(other && active){
+          const fx=this.x+this.face*42;
+          const fy=this.y+36;
+          const d=Math.hypot(other.x-fx,other.y-fy);
+          const now=performance.now();
+          if(d<other.radius+38 && (!this._lastDarkHit || now-this._lastDarkHit>125)){
+            this._lastDarkHit=now;
+            this.luciferDiveHits++;
+            const last=this.luciferDiveHits===4;
+            damageHit(this,other,(last?4.0:2.2)*this.damageMul,
+                      (last?145:45)*this.face,last?105:35);
+          }
+        }
       }
 
       // 必殺技の赤いオーラが出ている間は、手足そのものに当たり判定を持たせる。
@@ -377,7 +400,8 @@
 
       // v2.5 新キャラの色。必殺技・性能は後で個別調整。
       if(this.type==='black'){
-        ctx.filter='grayscale(1) brightness(.28) contrast(1.45)';
+        // 完全な黒ではなく、赤黒さを含む暗い色
+        ctx.filter='hue-rotate(305deg) saturate(1.45) brightness(.42) contrast(1.25)';
       }else if(this.type==='purple'){
         ctx.filter='hue-rotate(105deg) saturate(1.5) brightness(.88)';
       }
@@ -509,6 +533,25 @@
 
       ctx.restore();
 
+      // ルシファーさんの顔の傷
+      if(this.type==='black'){
+        ctx.save();
+        ctx.strokeStyle='rgba(120,25,30,.92)';
+        ctx.lineWidth=3.2;
+        ctx.lineCap='round';
+
+        // 目の横から頬へ斜めの傷＋短い交差傷
+        ctx.beginPath();
+        ctx.moveTo(10,-24);
+        ctx.lineTo(24,-7);
+        ctx.moveTo(14,-18);
+        ctx.lineTo(20,-23);
+        ctx.moveTo(19,-12);
+        ctx.lineTo(25,-17);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // パンチは腕だけ前へ
       if(this.attack==='punch'){
         ctx.save();
@@ -578,6 +621,47 @@
         ctx.beginPath();
         ctx.moveTo(15,47);
         ctx.lineTo(48,68);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ヘルラッシュ中、掴んだ相手まで舌を伸ばしたまま表示
+      if(this.specialType==='hellRush' && this.luciferGrabTarget){
+        ctx.save();
+        ctx.strokeStyle='#e98282';
+        ctx.lineWidth=8;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(26,4);
+        const tx=(this.luciferGrabTarget.x-this.x)*this.face;
+        const ty=this.luciferGrabTarget.y-this.y;
+        ctx.lineTo(tx,ty);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ヘルラッシュ5発目：上から振り下ろす拳
+      if(this.specialType==='hellRush' && this.luciferRushHits>=4){
+        ctx.save();
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=13;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(18,-2);
+        ctx.lineTo(40,34);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ダークネスラッシュ：片足を斜め前下へ伸ばす
+      if(this.specialType==='darknessRush'){
+        ctx.save();
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=13;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(14,46);
+        ctx.lineTo(58,67);
         ctx.stroke();
         ctx.restore();
       }
@@ -742,7 +826,8 @@
     lastReleasedDir:null,
     lastReleasedTime:0,
     dashUsedThisTouch:false,
-    commandHistory:[]
+    commandHistory:[],
+    luciferTongueReadyUntil:0
   };
 
   function pushCommandDir(dir){
@@ -975,6 +1060,101 @@
   }
 
 
+  function specialHellRush(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    const other=f.isPlayer?enemy:player;
+    const dir=f.face;
+
+    f.specialType='hellRush';
+    f.specialT=1.55;
+    f.attack='tongue';
+    f.attackT=1.55;
+    f.luciferGrabTarget=null;
+    f.luciferGrabT=0;
+    f.luciferRushHits=0;
+
+    // 舌を通常より長く前へ。命中したら拘束して引き寄せる。
+    const reach=f.tongueLen*1.28;
+    const dx=other.x-f.x;
+    const dy=other.y-f.y;
+    const inFront=dx*dir>0;
+
+    if(inFront && Math.abs(dx)<reach && Math.abs(dy)<70){
+      f.luciferGrabTarget=other;
+      f.luciferGrabT=.55;
+      other.stun=Math.max(other.stun,.9);
+
+      comboEl.textContent='ヘルラッシュ!';
+      setTimeout(()=>{
+        if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent='';
+      },850);
+
+      // 引き寄せ後、5発。最後は振り下ろし。
+      setTimeout(()=>{
+        if(!f.luciferGrabTarget || gameOver) return;
+        const t=f.luciferGrabTarget;
+        t.x=f.x+dir*62;
+        t.y=f.y-2;
+
+        const hits=[
+          {delay:0,   dmg:2.0, kx:18,  ky:-12, pose:'punch'},
+          {delay:115, dmg:2.0, kx:12,  ky:10,  pose:'punch'},
+          {delay:230, dmg:2.2, kx:20,  ky:-18, pose:'punch'},
+          {delay:345, dmg:2.2, kx:10,  ky:14,  pose:'punch'},
+          {delay:480, dmg:4.2, kx:125, ky:135, pose:'hammer'}
+        ];
+
+        hits.forEach((hit,i)=>{
+          setTimeout(()=>{
+            if(gameOver || !t) return;
+            f.attack='punch';
+            f.attackVariant=hit.pose==='hammer'?'down':'mid';
+            f.attackT=.18;
+            f.luciferRushHits=i+1;
+            damageHit(f,t,hit.dmg*f.damageMul,hit.kx*dir,hit.ky);
+            if(i===4){
+              f.luciferGrabTarget=null;
+              f.luciferGrabT=0;
+            }
+          },hit.delay);
+        });
+      },300);
+
+      return true;
+    }
+
+    // 空振りでも技は成立
+    comboEl.textContent='ヘルラッシュ!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent='';
+    },650);
+    return true;
+  }
+
+  function specialDarknessRush(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    f.specialType='darknessRush';
+    f.specialT=.92;
+    f.specialHitDone=false;
+    f.luciferDiveHits=0;
+    f.attack='kick';
+    f.attackVariant='down';
+    f.attackT=.92;
+
+    // 斜め前下へ連続キックで下降。
+    f.vx += f.face*250;
+    f.vy += 185;
+
+    comboEl.textContent='ダークネスラッシュ!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='ダークネスラッシュ!') comboEl.textContent='';
+    },700);
+
+    return true;
+  }
+
   function specialAquaStream(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
@@ -1101,11 +1281,35 @@
       }
     }
 
+    if(f.type==='black'){
+      const forward=f.face>0?'right':'left';
+      if(kind==='kick' && hasCommand([forward,'down'],760)){
+        clearCommand();
+        return specialDarknessRush(f);
+      }
+    }
+
     return false;
   }
 
   function attack(f, kind) {
     if(gameOver || f.guard) return;
+
+    // ルシファーさん：→→＋舌 のあと短時間だけパンチ待ち。
+    if(f.type==='black' && kind==='tongue'){
+      const forward=f.face>0?'right':'left';
+      if(hasCommand([forward,forward],760)){
+        input.luciferTongueReadyUntil=performance.now()+650;
+        clearCommand();
+        // ここでは通常舌も出す。次のパンチでヘルラッシュへ移行。
+      }
+    }
+
+    if(f.type==='black' && kind==='punch' &&
+       performance.now()<input.luciferTongueReadyUntil){
+      input.luciferTongueReadyUntil=0;
+      if(specialHellRush(f)) return;
+    }
 
     // 通常攻撃より先に必殺技コマンドを判定
     if(trySpecial(f,kind)) return;
@@ -1483,7 +1687,7 @@
         // 下向き水流が底に当たった場所だけ、軽い土煙を出す。
         // 円を大量生成せず、1つの濁り雲を短時間描くだけなので軽量。
         if(t.direction==='down' && !t.siltSpawned){
-          const floorY=innerHeight-28;
+          const floorY=canvas.height-42;
           const segDy=t.endY-t.startY;
           if(segDy>0 && t.startY<floorY && t.endY>=floorY){
             const u=(floorY-t.startY)/segDy;
@@ -1493,9 +1697,9 @@
               siltClouds.push({
                 x:floorX,
                 y:floorY,
-                t:.62,
-                life:.62,
-                radius:22
+                t:.85,
+                life:.85,
+                radius:28
               });
             }
           }
@@ -1529,13 +1733,13 @@
       ctx.save();
 
       // 水が少し茶色く濁る程度。派手な土煙にはしない。
-      ctx.globalAlpha=.20*a;
+      ctx.globalAlpha=.34*a;
       ctx.fillStyle='#8a6848';
       ctx.beginPath();
       ctx.ellipse(s.x,s.y-4,s.radius*1.45,s.radius*.58,0,0,Math.PI*2);
       ctx.fill();
 
-      ctx.globalAlpha=.13*a;
+      ctx.globalAlpha=.22*a;
       ctx.fillStyle='#b08a62';
       ctx.beginPath();
       ctx.ellipse(s.x-10,s.y-12,s.radius*.75,s.radius*.42,-.25,0,Math.PI*2);

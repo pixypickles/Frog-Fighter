@@ -255,7 +255,7 @@ button{font:inherit;color:inherit}
 }
 
 .black-frog{
-  filter:grayscale(1) brightness(.22) contrast(1.5);
+  filter:hue-rotate(305deg) saturate(1.45) brightness(.38) contrast(1.3);
 }
 .purple-frog{
   filter:hue-rotate(105deg) saturate(1.55) brightness(.85);
