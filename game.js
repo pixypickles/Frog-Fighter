@@ -509,29 +509,60 @@
         ctx.stroke();
       }
 
-      // リリスさん：目の後ろから左右だけ見えるリボン
+      // リリスさん：右目の後ろに斜め付けした蝶結びリボン
       if(this.type==='purple'){
         ctx.save();
-        ctx.translate(0,-35);
-        ctx.fillStyle='#ff86c8';
+
+        // 右上へずらし、少し斜めに傾ける
+        ctx.translate(31,-40);
+        ctx.rotate(-0.48);
+
         ctx.strokeStyle='#8b2f72';
         ctx.lineWidth=2.5;
+        ctx.lineJoin='round';
 
-        // 左側
+        // 左の輪
+        ctx.fillStyle='#ff86c8';
         ctx.beginPath();
-        ctx.moveTo(-25,5);
-        ctx.quadraticCurveTo(-47,-13,-52,3);
-        ctx.quadraticCurveTo(-48,19,-27,12);
+        ctx.moveTo(-3,1);
+        ctx.quadraticCurveTo(-24,-13,-27,2);
+        ctx.quadraticCurveTo(-24,16,-4,7);
         ctx.closePath();
-        ctx.fill(); ctx.stroke();
+        ctx.fill();
+        ctx.stroke();
 
-        // 右側
+        // 右の輪
         ctx.beginPath();
-        ctx.moveTo(25,5);
-        ctx.quadraticCurveTo(47,-13,52,3);
-        ctx.quadraticCurveTo(48,19,27,12);
+        ctx.moveTo(3,1);
+        ctx.quadraticCurveTo(24,-13,28,3);
+        ctx.quadraticCurveTo(24,17,4,7);
         ctx.closePath();
-        ctx.fill(); ctx.stroke();
+        ctx.fill();
+        ctx.stroke();
+
+        // 結び目
+        ctx.fillStyle='#ffd0eb';
+        ctx.beginPath();
+        ctx.arc(0,4,6.5,0,Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 垂れたリボンの端 2本
+        ctx.fillStyle='#f06fba';
+        ctx.beginPath();
+        ctx.moveTo(-3,9);
+        ctx.lineTo(-13,24);
+        ctx.lineTo(-3,20);
+        ctx.closePath();
+
+        ctx.moveTo(3,9);
+        ctx.lineTo(12,24);
+        ctx.lineTo(4,20);
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.stroke();
+
         ctx.restore();
       }
 
