@@ -21,8 +21,8 @@
   let comboHits = 0;
 
   const stats = {
-    green: { speed: 220, tongue: 210, damage: 1.0, sink: 12, hue: 0 },
-    blue:  { speed: 250, tongue: 260, damage: 0.88, sink: 8, hue: 95 }
+    green: { speed: 185, tongue: 210, damage: 1.0, sink: 9, hue: 0 },
+    blue:  { speed: 210, tongue: 260, damage: 0.88, sink: 6, hue: 95 }
   };
 
   function show(name) {
@@ -84,6 +84,8 @@
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
       this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
+      this.tongueClashTarget=null;  // 投げ抜け時：お互い舌が伸びた相手
+      this.tongueClashTimer=0;      // 舌の綱引き状態の残り時間
       this.throwState=null;         // 舌投げ中の状態
       this.spinAngle=0;
     }
@@ -105,18 +107,36 @@
         }
       }
 
+      // 投げ抜け成功後の「舌の綱引き」
+      if(this.tongueClashTimer>0){
+        this.tongueClashTimer-=dt;
+        if(this.tongueClashTimer<=0){
+          this.tongueClashTimer=0;
+          this.tongueClashTarget=null;
+        }
+      }
+
       this.vy += this.sink * dt;
-      this.vx *= Math.pow(.35, dt);
-      this.vy *= Math.pow(.5, dt);
+      this.vx *= Math.pow(.48, dt);
+      this.vy *= Math.pow(.6, dt);
 
       // 舌で引かれている側は、舌の持ち主へゆっくり吸い寄せられる
       const puller = this.isPlayer ? enemy : player;
       if(puller && puller.tonguePullTarget===this && puller.tonguePullTimer>0 && !this.throwState){
         const dx = puller.x - this.x;
         const dy = puller.y - this.y;
-        this.vx += dx * 8.5 * dt;
-        this.vy += dy * 8.5 * dt;
+        this.vx += dx * 6.0 * dt;
+        this.vy += dy * 6.0 * dt;
         this.stun = Math.max(this.stun, .08);
+      }
+
+      // 投げ抜け成功中：両者が中間へ寄っていく。
+      if(this.tongueClashTarget && this.tongueClashTimer>0 && !this.throwState){
+        const dx = this.tongueClashTarget.x - this.x;
+        const dy = this.tongueClashTarget.y - this.y;
+        this.vx += dx * 2.8 * dt;
+        this.vy += dy * 2.8 * dt;
+        this.stun = Math.max(this.stun, .06);
       }
 
       if(this.throwState){
@@ -288,8 +308,8 @@
         ctx.restore();
       }
 
-      if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0)){
-        const target = this.tonguePullTarget || (this.isPlayer ? enemy : player);
+      if(this.tongueT>0 || (this.tonguePullTarget && this.tonguePullTimer>0) || (this.tongueClashTarget && this.tongueClashTimer>0)){
+        const target = this.tongueClashTarget || this.tonguePullTarget || (this.isPlayer ? enemy : player);
         let len = Math.min(this.tongueRange, Math.abs(target.x-this.x));
         ctx.strokeStyle='#ff718e';
         ctx.lineWidth=8;
@@ -328,24 +348,56 @@
   }
 
   function attack(f, kind) {
-    if(gameOver || f.stun>0 || f.attackT>0 || f.guard) return;
+    if(gameOver || f.guard) return;
+
+    // 舌で引かれている最中だけは、stun中でも舌による投げ抜けを受け付ける。
+    const pullerForEscape = f.isPlayer ? enemy : player;
+    const canTongueEscape = kind==='tongue' && pullerForEscape &&
+      pullerForEscape.tonguePullTarget===f && pullerForEscape.tonguePullTimer>0;
+
+    if(!canTongueEscape && (f.stun>0 || f.attackT>0)) return;
     const other = f.isPlayer ? enemy : player;
     const dir=f.face;
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
 
     if(kind==='punch'){
-      f.attack='punch';f.attackT=.18;
+      f.attack='punch';f.attackT=.28;
       if(dist<82 && Math.abs(other.y-f.y)<55){
-        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,65*dir,-8),55);
+        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,58*dir,-6),95);
       }
     } else if(kind==='kick'){
-      f.attack='kick';f.attackT=.28;
+      f.attack='kick';f.attackT=.42;
       if(dist<100 && Math.abs(other.y-f.y)<70){
-        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,175*dir,-28),80);
+        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,155*dir,-24),135);
       }
     } else if(kind==='tongue'){
+      // 自分が舌で引き寄せられている最中に舌を押すと「投げ抜け」。
+      // お互いの舌が伸びたままになり、投げには移行せず中央へ接近する。
+      const puller = f.isPlayer ? enemy : player;
+      if(puller && puller.tonguePullTarget===f && puller.tonguePullTimer>0){
+        puller.tonguePullTarget=null;
+        puller.tonguePullTimer=0;
+
+        f.tongueClashTarget=puller;
+        f.tongueClashTimer=.72;
+        puller.tongueClashTarget=f;
+        puller.tongueClashTimer=.72;
+
+        f.tongueT=.72;
+        puller.tongueT=.72;
+        f.attack='tongue';
+        f.attackT=.24;
+
+        // 互いの速度を一度落とし、中央へじわっと寄る。
+        f.vx*=.3; f.vy*=.3;
+        puller.vx*=.3; puller.vy*=.3;
+
+        spawnImpact((f.x+puller.x)/2,(f.y+puller.y)/2,'guard');
+        return;
+      }
+
       // 引き寄せ中にもう一度舌を押したら「舌投げ」
-      if(f.tonguePullTarget && f.tonguePullTimer>0){
+      if(!f.tongueClashTarget && f.tonguePullTarget && f.tonguePullTimer>0){
         const target=f.tonguePullTarget;
         f.tongueT=.18;
         f.attack='tongue';
@@ -462,7 +514,15 @@
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key==='i'&&player)player.guard=false});
 
   function enemyAI(dt){
-    if(gameOver||enemy.stun>0)return;
+    if(gameOver)return;
+
+    // CPUも舌で引かれている時は、たまに投げ抜けを狙う。
+    if(player && player.tonguePullTarget===enemy && player.tonguePullTimer>0){
+      if(Math.random()<dt*3.2) attack(enemy,'tongue');
+      return;
+    }
+
+    if(enemy.stun>0)return;
     const dx=player.x-enemy.x,dy=player.y-enemy.y,dist=Math.hypot(dx,dy);
     if(enemy.attackT<=0){
       if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*dt; }
@@ -507,8 +567,8 @@
       let ix=input.x+(keys['d']?1:0)-(keys['a']?1:0);
       let iy=input.y+(keys['s']?1:0)-(keys['w']?1:0);
       if(player.stun<=0&&!player.guard){
-        player.vx += ix*player.speed*dt*3.0;
-        player.vy += iy*player.speed*dt*2.4;
+        player.vx += ix*player.speed*dt*2.45;
+        player.vy += iy*player.speed*dt*2.0;
       }
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
