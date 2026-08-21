@@ -1622,11 +1622,17 @@
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
     f.specialType='pressureBlade'; f.specialT=.42; f.attack='punch'; f.attackT=.42;
     pressureBlades.push({
-      owner:f, x:f.x+f.face*52, y:f.y+2, vx:f.face*245,
-      t:1.55, life:1.55, hit:false
+      owner:f,
+      x:f.x+f.face*72,
+      y:f.y,
+      vx:f.face*210,
+      t:1.85,
+      life:1.85,
+      hit:false,
+      size:1.35
     });
     comboEl.textContent='水圧カッター!';
-    setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},650);
+    setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},900);
     return true;
   }
 
@@ -1755,7 +1761,16 @@
 
     if(f.type==='yellow'){
       const forward=f.face>0?'right':'left';
-      if(kind==='punch' && hasCommand(['down',forward],780)){
+      const downForward=f.face>0?'downRight':'downLeft';
+
+      if(
+        kind==='punch' &&
+        (
+          hasCommand(['down',forward],900) ||
+          hasCommand(['down',downForward],900) ||
+          hasCommand([downForward,forward],900)
+        )
+      ){
         clearCommand();
         return specialPressureBlade(f);
       }
@@ -2334,56 +2349,60 @@
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
 
-      // ラファエルさん：はっきり見える三日月型の水圧カッター
+      // ラファエルさん：大きく、はっきり見える三日月型の水圧カッター
     pressureBlades.forEach(p=>{
       const a=Math.max(0,p.t/p.life);
+      const s=p.size||1;
+
       ctx.save();
       ctx.translate(p.x,p.y);
       if(p.vx<0) ctx.scale(-1,1);
+      ctx.scale(s,s);
 
-      ctx.globalCompositeOperation='lighter';
-
-      // 外側の淡い発光
-      ctx.globalAlpha=.32*a;
-      ctx.strokeStyle='#8cecff';
-      ctx.lineWidth=24;
+      // 通常合成で輪郭をまず出す
+      ctx.globalAlpha=.95*a;
+      ctx.strokeStyle='rgba(235,255,255,.98)';
+      ctx.lineWidth=12;
       ctx.lineCap='round';
       ctx.beginPath();
-      ctx.arc(0,0,31,-1.15,1.15);
+      ctx.arc(0,0,34,-1.18,1.18);
       ctx.stroke();
 
-      // 主体の太い白水色ライン
-      ctx.globalAlpha=.95*a;
-      ctx.strokeStyle='#efffff';
-      ctx.lineWidth=9;
+      // その上に発光
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.45*a;
+      ctx.strokeStyle='#7fe8ff';
+      ctx.lineWidth=28;
       ctx.beginPath();
-      ctx.arc(0,0,30,-1.12,1.12);
+      ctx.arc(0,0,35,-1.2,1.2);
       ctx.stroke();
 
-      // 内側の青ラインで輪郭を明確に
-      ctx.globalAlpha=.8*a;
-      ctx.strokeStyle='#53d8ff';
-      ctx.lineWidth=4;
-      ctx.beginPath();
-      ctx.arc(-2,0,24,-1.08,1.08);
-      ctx.stroke();
-
-      // 進行方向に少し尖りを追加
+      // 内側の濃い水色ライン
       ctx.globalAlpha=.9*a;
-      ctx.fillStyle='#eaffff';
+      ctx.strokeStyle='#31cfff';
+      ctx.lineWidth=5;
       ctx.beginPath();
-      ctx.moveTo(15,-25);
-      ctx.lineTo(39,0);
-      ctx.lineTo(15,25);
+      ctx.arc(-3,0,26,-1.12,1.12);
+      ctx.stroke();
+
+      // 三日月の先端を尖らせる
+      ctx.globalAlpha=.95*a;
+      ctx.fillStyle='#f4ffff';
+      ctx.beginPath();
+      ctx.moveTo(18,-29);
+      ctx.lineTo(47,0);
+      ctx.lineTo(18,29);
       ctx.closePath();
       ctx.fill();
 
-      // 後ろに泡の軌跡
-      ctx.globalAlpha=.55*a;
-      ctx.fillStyle='#e9ffff';
-      for(let i=0;i<4;i++){
+      // 泡の軌跡
+      ctx.globalAlpha=.7*a;
+      ctx.fillStyle='#eaffff';
+      for(let i=0;i<5;i++){
+        const bx=-34-i*12;
+        const by=(i%2===0?-1:1)*(7+i*2);
         ctx.beginPath();
-        ctx.arc(-30-i*11,(-1)**i*(6+i*2),3+(i%2),0,Math.PI*2);
+        ctx.arc(bx,by,3.2+(i%2),0,Math.PI*2);
         ctx.fill();
       }
 

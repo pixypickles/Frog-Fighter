@@ -323,3 +323,45 @@ button{font:inherit;color:inherit}
   content:'';
   flex:0 0 4px;
 }
+
+/* v4.2: キャラ選択は横スクロールをやめて2列固定 */
+#selectScreen .fighter-grid{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:10px !important;
+  width:min(760px,96vw) !important;
+  max-width:96vw !important;
+  overflow:visible !important;
+  padding:6px 10px 16px !important;
+  box-sizing:border-box !important;
+  scroll-snap-type:none !important;
+}
+
+#selectScreen .fighter-card{
+  width:100% !important;
+  min-width:0 !important;
+  max-width:none !important;
+  flex:none !important;
+  scroll-snap-align:none !important;
+  padding:10px 8px !important;
+  box-sizing:border-box !important;
+}
+
+#selectScreen .fighter-grid::before,
+#selectScreen .fighter-grid::after{
+  display:none !important;
+  content:none !important;
+}
+
+#selectScreen{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+}
+
+#selectScreen .fighter-card strong{
+  font-size:clamp(13px,2.2vw,18px);
+}
+
+#selectScreen .fighter-card .special-hint{
+  font-size:clamp(9px,1.7vw,13px);
+}
