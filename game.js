@@ -136,22 +136,27 @@
       ctx.ellipse(2,36,19,23,0,0,Math.PI*2);
       ctx.fill();
 
-      // 後ろ脚：胴体から生やす
+      // ニュートラル脚：横に開かず、胴体の下に軽くたたむ。
+      // キック中は前脚をここでは描かず、攻撃ポーズ側で差し替える。
       ctx.strokeStyle='#4aa944';
       ctx.lineWidth=12;
       ctx.lineCap='round';
       ctx.lineJoin='round';
       ctx.beginPath();
-      ctx.moveTo(-19,47); ctx.lineTo(-37,61); ctx.lineTo(-50,57);
-      ctx.moveTo(19,47); ctx.lineTo(37,61); ctx.lineTo(50,57);
+      ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
+      if(this.attack!=='kick'){
+        ctx.moveTo(15,48); ctx.lineTo(19,62); ctx.lineTo(28,67);
+      }
       ctx.stroke();
 
-      // 腕：胴体の横から
+      // ニュートラル腕。パンチ中は前腕を消して攻撃ポーズに差し替える。
       ctx.strokeStyle='#58bd50';
       ctx.lineWidth=10;
       ctx.beginPath();
-      ctx.moveTo(-23,22); ctx.lineTo(-38,34);
-      ctx.moveTo(23,22); ctx.lineTo(38,34);
+      ctx.moveTo(-23,22); ctx.lineTo(-32,35);
+      if(this.attack!=='punch'){
+        ctx.moveTo(23,22); ctx.lineTo(32,35);
+      }
       ctx.stroke();
 
       // 頭
@@ -206,8 +211,8 @@
         ctx.lineWidth=12;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(22,21);
-        ctx.lineTo(58,9);
+        ctx.moveTo(22,22);
+        ctx.lineTo(59,8);
         ctx.stroke();
         ctx.restore();
       }
@@ -220,8 +225,8 @@
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        ctx.moveTo(17,47);
-        ctx.lineTo(62,50);
+        ctx.moveTo(15,48);
+        ctx.lineTo(60,48);
         ctx.stroke();
         ctx.restore();
       }
