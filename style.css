@@ -260,3 +260,7 @@ button{font:inherit;color:inherit}
 .purple-frog{
   filter:hue-rotate(105deg) saturate(1.55) brightness(.85);
 }
+
+.blue-frog{filter:hue-rotate(88deg) saturate(1.45) brightness(1.05);}
+.black-frog{filter:grayscale(1) brightness(.42) contrast(1.22);}
+.purple-frog{filter:hue-rotate(112deg) saturate(1.6) brightness(.92);}

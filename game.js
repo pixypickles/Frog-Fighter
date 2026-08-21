@@ -150,16 +150,39 @@
 
   function fighterPalette(type){
     if(type==='black'){
-      // ルシファーさん：黒そのものではなく、かなり暗い赤黒色
-      return {body:'#343941', limb:'#454b55', light:'#59616d'};
+      return {
+        body:'#3b4048',
+        limb:'#3b4048',
+        light:'#59616d',
+        belly:'#707984',
+        eyeBump:'#4b525c'
+      };
     }
     if(type==='purple'){
-      return {body:'#8b45b5', limb:'#9e59c7', light:'#bd7add'};
+      return {
+        body:'#8b45b5',
+        limb:'#8b45b5',
+        light:'#b66bd8',
+        belly:'#c98ae6',
+        eyeBump:'#a85ecb'
+      };
     }
     if(type==='blue'){
-      return {body:'#32a9df', limb:'#48b9e7', light:'#72ccef'};
+      return {
+        body:'#31aee8',
+        limb:'#31aee8',
+        light:'#75d8ff',
+        belly:'#8ee3ff',
+        eyeBump:'#63c8ef'
+      };
     }
-    return {body:'#38c94d', limb:'#61d357', light:'#78e36d'};
+    return {
+      body:'#39cb4d',
+      limb:'#39cb4d',
+      light:'#78e36d',
+      belly:'#86e77b',
+      eyeBump:'#63df6e'
+    };
   }
 
   class Fighter {
@@ -195,6 +218,7 @@
       this.luciferGrabT=0;
       this.luciferRushHits=0;
       this.luciferPunchSide=0;
+      this.ribbonWhipIndex=0;
       this.luciferDiveHits=0;
 
       // 舌システム
@@ -441,14 +465,14 @@
       ctx.fill();
 
       // お腹
-      ctx.fillStyle='#8ae47f';
+      ctx.fillStyle=pal.belly;
       ctx.beginPath();
       ctx.ellipse(2,36,19,23,0,0,Math.PI*2);
       ctx.fill();
 
       // ニュートラル脚：横に開かず、胴体の下に軽くたたむ。
       // キック中は前脚をここでは描かず、攻撃ポーズ側で差し替える。
-      ctx.strokeStyle='#4aa944';
+      ctx.strokeStyle=pal.limb;
       ctx.lineWidth=12;
       ctx.lineCap='round';
       ctx.lineJoin='round';
@@ -473,13 +497,13 @@
       }
 
       // 頭
-      ctx.fillStyle='#63cf58';
+      ctx.fillStyle=pal.body;
       ctx.beginPath();
       ctx.ellipse(0,-6,35,30,0,0,Math.PI*2);
       ctx.fill();
 
       // 目のふくらみ
-      ctx.fillStyle='#7ce66f';
+      ctx.fillStyle=pal.eyeBump;
       ctx.beginPath();
       ctx.arc(-19,-29,16,0,Math.PI*2);
       ctx.arc(19,-29,16,0,Math.PI*2);
@@ -659,20 +683,24 @@
       if(this.specialType==='ribbonWhip'){
         ctx.save();
         ctx.strokeStyle='#f08b9a';
-        ctx.lineWidth=6;
+        ctx.lineWidth=7;
         ctx.lineCap='round';
-        const phase=performance.now()/52;
-        const mouthX=15, mouthY=7;
-        for(let i=0;i<5;i++){
-          const reach=105+i*15;
-          const wobble=Math.sin(phase+i*1.7)*38;
-          const endY=[-48,38,-18,55,4][i] + Math.cos(phase*.9+i)*18;
-          ctx.globalAlpha=.62+i*.07;
-          ctx.beginPath();
-          ctx.moveTo(mouthX,mouthY);
-          ctx.bezierCurveTo(48,wobble,82,-wobble*.75,reach,endY);
-          ctx.stroke();
-        }
+
+        const idx=Math.max(1,this.ribbonWhipIndex)-1;
+        const local=(performance.now()/135)%1;
+        const even=idx%2===0;
+
+        // even: 上→下 / odd: 下→上
+        const startY=even ? -52 : 48;
+        const endY=even ? 48 : -52;
+        const swingY=startY+(endY-startY)*local;
+        const reach=158;
+
+        ctx.beginPath();
+        ctx.moveTo(15,7);
+        ctx.quadraticCurveTo(72,swingY*.55,reach,swingY);
+        ctx.stroke();
+
         ctx.restore();
       }
 
@@ -746,7 +774,7 @@
         ctx.moveTo(-17,21); ctx.lineTo(13,17); ctx.lineTo(42,15);
         ctx.moveTo(-15,31); ctx.lineTo(14,29); ctx.lineTo(42,28);
         ctx.stroke();
-        ctx.fillStyle='#68cf5f';
+        ctx.fillStyle=pal.light;
         ctx.beginPath();
         ctx.arc(43,15,6,0,Math.PI*2);
         ctx.arc(43,28,6,0,Math.PI*2);
@@ -780,7 +808,7 @@
         ctx.stroke();
 
         // 手先を少し丸く見せる
-        ctx.fillStyle='#68cf5f';
+        ctx.fillStyle=pal.light;
         ctx.beginPath();
         ctx.arc(10,18,6,0,Math.PI*2);
         ctx.arc(-5,16,6,0,Math.PI*2);
@@ -887,7 +915,8 @@
     luciferTongueReadyUntil:0,
     punchTapTimes:[],
     tongueTapTimes:[],
-    guardTapTimes:[]
+    guardTapTimes:[],
+    lastBackInputTime:0
   };
 
   function pushCommandDir(dir){
@@ -979,6 +1008,16 @@
   function checkTouchDash(){
     const dir=getStickDirection(input.x,input.y);
     input.currentDir=dir;
+
+    // リリスさん用：後ろ方向を入れた時刻を記録
+    if(player && player.type==='purple' && dir){
+      const back=player.face>0?'left':'right';
+      const backUp=player.face>0?'upLeft':'upRight';
+      const backDown=player.face>0?'downLeft':'downRight';
+      if(dir===back || dir===backUp || dir===backDown){
+        input.lastBackInputTime=performance.now();
+      }
+    }
     if(dir) pushCommandDir(dir);
     if(!dir || input.dashUsedThisTouch) return;
 
@@ -1126,18 +1165,45 @@
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
     const other=f.isPlayer?enemy:player;
     const dir=f.face;
-    f.specialType='ribbonWhip'; f.specialT=.92; f.attack='tongue'; f.attackT=.92;
-    comboEl.textContent='リボンウィップ!';
-    setTimeout(()=>{if(comboEl.textContent==='リボンウィップ!')comboEl.textContent='';},700);
 
-    const ys=[-38,22,-8,42,-25];
-    ys.forEach((oy,i)=>setTimeout(()=>{
-      if(gameOver || !other) return;
-      const dx=(other.x-f.x)*dir, dy=other.y-(f.y+oy);
-      if(dx>0 && dx<f.tongueRange*1.35 && Math.abs(dy)<60){
-        damageHit(f,other,1.35*f.damageMul,(i===4?90:24)*dir,(i===4?-45:0));
-      }
-    },i*115));
+    f.specialType='ribbonWhip';
+    f.specialT=.95;
+    f.attack='tongue';
+    f.attackT=.95;
+    f.ribbonWhipIndex=0;
+
+    comboEl.textContent='リボンウィップ!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='リボンウィップ!') comboEl.textContent='';
+    },760);
+
+    // 上→下、下→上、上→下、下→上、上→下 の5回
+    const directions=[
+      {from:-52,to:48},
+      {from:48,to:-52},
+      {from:-52,to:48},
+      {from:48,to:-52},
+      {from:-52,to:48}
+    ];
+
+    directions.forEach((swing,i)=>{
+      setTimeout(()=>{
+        if(gameOver || !other) return;
+        f.ribbonWhipIndex=i+1;
+
+        const dx=(other.x-f.x)*dir;
+        // 1回の振り幅が広いので、上下判定は広め
+        if(dx>0 && dx<f.tongueRange*1.42 && Math.abs(other.y-f.y)<78){
+          damageHit(
+            f,other,
+            1.3*f.damageMul,
+            (i===4?95:20)*dir,
+            (i===4?-35:0)
+          );
+        }
+      },i*135);
+    });
+
     return true;
   }
 
@@ -1149,11 +1215,14 @@
     // 敵の背後側、画面内から必ず見える位置に出す。
     const towardEnemy = other.x>=f.x ? 1 : -1;
     const spawnSide=towardEnemy;
-    const spawnX=Math.max(70,Math.min(canvas.width-70,other.x+spawnSide*185));
+    const spawnX=Math.max(90,Math.min(innerWidth-90,other.x+spawnSide*170));
     catfishCharges.push({
       owner:f,target:other,
-      x:spawnX,y:other.y+12,
-      vx:-spawnSide*360,t:1.35,hit:false
+      x:spawnX,
+      y:Math.max(90,Math.min(innerHeight-90,other.y+12)),
+      vx:-spawnSide*320,
+      t:1.65,
+      hit:false
     });
     comboEl.textContent='ナマズさん突進!';
     setTimeout(()=>{if(comboEl.textContent==='ナマズさん突進!')comboEl.textContent='';},800);
@@ -1602,21 +1671,23 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
-          // リリスさん：後ろ入力の直後にガードを2回でナマズさん。
+          // リリスさん：後ろ入力のあと約1秒以内にガードを2回でナマズさん。
           if(player.type==='purple' && !player.throwState){
             const now=performance.now();
-            input.guardTapTimes=(input.guardTapTimes||[]).filter(t=>now-t<=650);
+            input.guardTapTimes=(input.guardTapTimes||[]).filter(t=>now-t<=700);
             input.guardTapTimes.push(now);
 
-            const back=player.face>0?'left':'right';
-            const backUp=player.face>0?'upLeft':'upRight';
-            const backDown=player.face>0?'downLeft':'downRight';
-            const recent=input.commandHistory.filter(e=>now-e.t<=850);
-            const hasRecentBack=recent.some(e=>e.dir===back || e.dir===backUp || e.dir===backDown);
+            const recentlyBack = now-(input.lastBackInputTime||0) <= 1000;
 
-            if(hasRecentBack && input.guardTapTimes.length>=2){
+            if(recentlyBack && input.guardTapTimes.length>=2){
               input.guardTapTimes=[];
+              input.lastBackInputTime=0;
               clearCommand();
+
+              // 通常ガード状態に入る前に必殺技を発動
+              player.guard=false;
+              player.attackT=0;
+
               if(specialCatfishCharge(player)){
                 btn.classList.remove('pressed');
                 return;
