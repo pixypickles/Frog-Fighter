@@ -636,7 +636,7 @@
         if(this.specialType==='abyssCharge' || this.specialType==='abyssBurst'){
           ctx.lineTo(68,7);
         }else if(this.specialType==='hellCrashFinish'){
-          ctx.lineTo(42,48);
+          ctx.lineTo(48,-38);
         }else if(this.specialType==='aquaTornado'){
           ctx.lineTo(48,-34);
         }else if(this.attackVariant==='up'){
@@ -708,7 +708,7 @@
           intensity=.4+.6*Math.min(1,held/1150);
         }
         if(this.specialType==='hellCrashFinish'){
-          drawRedAura(42,48,22,19,intensity);
+          drawRedAura(48,-38,22,19,intensity);
         }else{
           drawRedAura(58,7,21,17,intensity);
         }
@@ -1292,7 +1292,7 @@
       if(comboEl.textContent==='ヘルクラッシュ!') comboEl.textContent='';
     },800);
 
-    // 最初は短く鋭い体当たり
+    // 短く鋭い体当たり
     f.vx += dir*355;
 
     const started=performance.now();
@@ -1305,36 +1305,41 @@
       const dx=(other.x-f.x)*dir;
       const dy=Math.abs(other.y-f.y);
 
-      // 体当たりが触れた瞬間、その場で打ち下ろしへ
       if(dx>-16 && dx<84 && dy<72 && !f.specialHitDone){
         f.specialHitDone=true;
         clearInterval(timer);
 
         f.vx*=.08;
         other.vx*=.08;
-        other.vy*=.15;
-        other.stun=Math.max(other.stun,.32);
+        other.vy*=.12;
+        other.stun=Math.max(other.stun,.38);
 
+        // 接触後、赤オーラのアッパーへ
         f.specialType='hellCrashFinish';
-        f.specialT=.48;
+        f.specialT=.5;
         f.attack='punch';
-        f.attackVariant='down';
-        f.attackT=.48;
+        f.attackVariant='up';
+        f.attackT=.5;
 
         setTimeout(()=>{
           if(gameOver) return;
 
-          // 赤オーラ拳が命中。横へ飛ばさず、水底へ勢いよく叩き落とす。
           other.hurtFace='both';
-          other.hurtFaceT=.65;
-          damageHit(f,other,12.0*f.damageMul,18*dir,390);
+          other.hurtFaceT=.72;
 
-          // 打撃位置の小さな赤い衝撃
+          // 斜め上へ強く飛ばす
+          damageHit(f,other,12.0*f.damageMul,245*dir,-315);
+
+          // 舌投げと同系統の「やられ回転」を利用
+          other.throwSpin=Math.max(other.throwSpin||0,1.05);
+          other.throwSpinDir=dir;
+          other.throwState='hellCrashSpin';
+
           burstWaves.push({
             x:other.x,
-            y:other.y-10,
-            t:.28,life:.28,
-            radius:12,max:62,
+            y:other.y+4,
+            t:.30,life:.30,
+            radius:12,max:70,
             power:1
           });
         },125);

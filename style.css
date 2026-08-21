@@ -264,3 +264,32 @@ button{font:inherit;color:inherit}
 .blue-frog{filter:hue-rotate(88deg) saturate(1.45) brightness(1.05);}
 .black-frog{filter:grayscale(1) brightness(.42) contrast(1.22);}
 .purple-frog{filter:hue-rotate(112deg) saturate(1.6) brightness(.92);}
+
+/* v3.7: キャラ選択では名前の直下に必殺技をしっかり表示 */
+.char-card{
+  display:flex;
+  flex-direction:column;
+}
+.char-card .char-name,
+.char-card h3,
+.char-card h2{
+  order:1;
+}
+.char-card .special-hint{
+  order:2;
+  display:block;
+  width:100%;
+  margin:3px 0;
+  line-height:1.25;
+  font-size:clamp(11px,1.8vw,15px);
+  font-weight:700;
+  text-align:center;
+}
+.char-card .frog-preview,
+.char-card .char-preview{
+  order:3;
+}
+.char-card .select-btn,
+.char-card button{
+  order:4;
+}
