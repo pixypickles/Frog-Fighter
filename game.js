@@ -10,6 +10,7 @@
   const enemyHpEl = document.getElementById('enemyHp');
   const comboEl = document.getElementById('comboText');
   const restartButton = document.getElementById('restartButton');
+  const titleReturnButton=document.getElementById('titleReturnButton');
   const practiceExitButton = document.getElementById('practiceExitButton');
   const leafMiniHud=document.getElementById('leafMiniHud');
   const leafMiniTimeEl=document.getElementById('leafMiniTime');
@@ -170,6 +171,22 @@
       comboEl.textContent='';
       show('select');
     });
+  }
+
+  if(titleReturnButton){
+    titleReturnButton.onclick=()=>{
+      gameOver=true;
+      running=false;
+      leafMiniActive=false;
+      guardMiniActive=false;
+      if(storyHud) storyHud.hidden=true;
+      if(leafMiniHud){leafMiniHud.hidden=true;leafMiniHud.style.display='none';}
+      if(guardMiniHud){guardMiniHud.hidden=true;guardMiniHud.style.display='none';}
+      restartButton.hidden=true;
+      titleReturnButton.hidden=true;
+      comboEl.textContent='';
+      show('title');
+    };
   }
 
   restartButton.onclick = () => {
@@ -1085,18 +1102,6 @@
       ctx.restore();
 
       // ルシファーさん：シンプルな一本傷
-      if(this.type==='black'){
-        ctx.save();
-        ctx.strokeStyle='#6f1d24';
-        ctx.lineWidth=3.2;
-        ctx.lineCap='round';
-        ctx.beginPath();
-        ctx.moveTo(0,-22);
-        ctx.lineTo(0,4);
-        ctx.stroke();
-        ctx.restore();
-      }
-
       // パンチは腕だけ前へ
       if(this.attack==='punch'){
         ctx.save();
@@ -1826,6 +1831,7 @@
     gameOver=false;
     restartButton.hidden=true;
     restartButton.textContent='もう一度';
+    if(titleReturnButton) titleReturnButton.hidden=true;
     comboHits=0; comboTimer=0; comboEl.textContent='';
 
     const rivalType=enemyType || selectedOpponent || 'blue';
@@ -2076,13 +2082,18 @@
           other.hurtFace='both';
           other.hurtFaceT=.72;
 
-          // 斜め上へ強く飛ばす
+          // 斜め上へ強く飛ばし、やられ顔で回転させる
           damageHit(f,other,12.0*f.damageMul,245*dir,-315);
 
-          // 舌投げと同系統の「やられ回転」を利用
-          other.throwSpin=Math.max(other.throwSpin||0,1.05);
-          other.throwSpinDir=dir;
-          other.throwState='hellCrashSpin';
+          // Fighterの既存回転処理を使う。文字列ではなく安全なthrowStateオブジェクト。
+          other.throwState=null;
+          other.spinAngle=0;
+          other.throwState={
+            owner:f,
+            spinSpeed:dir*13.5,
+            endT:.82,
+            noWallDamage:true
+          };
 
           burstWaves.push({
             x:other.x,
@@ -2118,8 +2129,19 @@
     setTimeout(()=>{
       if(gameOver)return; const other=f.isPlayer?enemy:player; if(!other)return;
       const hx=f.x+f.face*67, hy=f.y+7, dist=Math.hypot(other.x-hx,other.y-hy);
-      if(dist<other.radius+34) damageHit(f,other,(7.5+7.5*power)*f.damageMul,190*f.face,-42);
-      else if(dist<155) damageHit(f,other,(1.1+1.9*power)*f.damageMul,85*f.face,-16);
+      if(dist<other.radius+34){
+        // 直撃は相手をルシファーさんから遠ざける方向へ大きく吹き飛ばす
+        const directKnockback=300+150*power;
+        damageHit(
+          f,other,
+          (7.5+7.5*power)*f.damageMul,
+          directKnockback*f.face,
+          -55
+        );
+      }else if(dist<155){
+        // 衝撃波だけなら従来どおり小さめ
+        damageHit(f,other,(1.1+1.9*power)*f.damageMul,85*f.face,-16);
+      }
       burstWaves.push({x:hx,y:hy,t:.44,life:.44,radius:18,max:150,power});
     },110);
     return true;
@@ -2785,6 +2807,7 @@
     comboEl.textContent = playerWon ? 'YOU WIN!' : 'YOU LOSE';
     restartButton.textContent='もう一度';
     restartButton.hidden=false;
+    if(titleReturnButton) titleReturnButton.hidden=false;
   }
 
   function updateHud(){
