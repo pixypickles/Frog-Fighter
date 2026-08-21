@@ -10,6 +10,7 @@
   const enemyHpEl = document.getElementById('enemyHp');
   const comboEl = document.getElementById('comboText');
   const restartButton = document.getElementById('restartButton');
+  const practiceExitButton = document.getElementById('practiceExitButton');
 
   let selectedFighter = 'green';
   let running = false;
@@ -82,6 +83,19 @@
     });
   }
 
+  if(practiceExitButton){
+    practiceExitButton.addEventListener('pointerup',(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      gameMode='battle';
+      if(practiceLabel) practiceLabel.style.display='none';
+      practiceExitButton.hidden=true;
+      comboEl.textContent='';
+      show('select');
+    });
+  }
+
   restartButton.onclick = () => {
     if(gameMode==='practice') startPractice();
     else startGame();
@@ -121,6 +135,10 @@
       this.dashT=0;
       this.dashCooldown=0;
 
+      // 必殺技
+      this.specialT=0;
+      this.specialType=null;
+
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
       this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
@@ -139,6 +157,13 @@
       if (this.wallTechT>0) this.wallTechT-=dt;
       if (this.dashT>0) this.dashT-=dt;
       if (this.dashCooldown>0) this.dashCooldown-=dt;
+      if (this.specialT>0){
+        this.specialT-=dt;
+        if(this.specialT<=0){
+          this.specialT=0;
+          this.specialType=null;
+        }
+      }
       if (this.attackT>0) {
         this.attackT-=dt;
         if (this.attackT<=0) this.attack=null;
@@ -273,6 +298,13 @@
     draw() {
       ctx.save();
       ctx.translate(this.x,this.y);
+
+      // かえる跳びアッパーの溜め：少ししゃがむ
+      if(this.specialType==='uppercut' && this.specialT>.48){
+        ctx.translate(0,10);
+        ctx.scale(1.08,.82);
+      }
+
       if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
       if(this.face<0) ctx.scale(-1,1);
       if(this.flash>0) ctx.globalAlpha=.55;
@@ -426,6 +458,21 @@
         }else{
           ctx.lineTo(60,48);
         }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if(this.specialType==='dropkick'){
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#61d357';
+        ctx.lineWidth=13;
+        ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(14,43);
+        ctx.lineTo(66,35);
+        ctx.moveTo(10,52);
+        ctx.lineTo(64,50);
         ctx.stroke();
         ctx.restore();
       }
@@ -589,8 +636,42 @@
     currentDir:null,
     lastReleasedDir:null,
     lastReleasedTime:0,
-    dashUsedThisTouch:false
+    dashUsedThisTouch:false,
+    commandHistory:[]
   };
+
+  function pushCommandDir(dir){
+    if(!dir) return;
+    const now=performance.now();
+    const hist=input.commandHistory;
+    const last=hist[hist.length-1];
+
+    if(!last || last.dir!==dir){
+      hist.push({dir,time:now});
+    }else{
+      last.time=now;
+    }
+
+    // 古い入力は削除
+    input.commandHistory=hist.filter(v=>now-v.time<=900).slice(-8);
+  }
+
+  function hasCommand(sequence, maxMs=700){
+    const now=performance.now();
+    const hist=input.commandHistory.filter(v=>now-v.time<=maxMs);
+
+    let i=hist.length-1;
+    for(let s=sequence.length-1;s>=0;s--){
+      while(i>=0 && hist[i].dir!==sequence[s]) i--;
+      if(i<0) return false;
+      i--;
+    }
+    return true;
+  }
+
+  function clearCommand(){
+    input.commandHistory=[];
+  }
 
   function getStickDirection(x,y){
     const mag=Math.hypot(x,y);
@@ -648,6 +729,7 @@
   function checkTouchDash(){
     const dir=getStickDirection(input.x,input.y);
     input.currentDir=dir;
+    if(dir) pushCommandDir(dir);
     if(!dir || input.dashUsedThisTouch) return;
 
     const now=performance.now();
@@ -688,6 +770,8 @@
     hitRings=[];
     guardWaves=[];
 
+    if(practiceExitButton) practiceExitButton.hidden=false;
+
     if(!practiceLabel){
       practiceLabel=document.createElement('div');
       practiceLabel.className='practice-label';
@@ -705,6 +789,7 @@
   function startGame() {
     gameMode='battle';
     if(practiceLabel) practiceLabel.style.display='none';
+    if(practiceExitButton) practiceExitButton.hidden=true;
     gameOver=false; restartButton.hidden=true; comboHits=0; comboTimer=0; comboEl.textContent='';
     player = new Fighter(innerWidth*.28, innerHeight*.52, true, selectedFighter);
     enemy = new Fighter(innerWidth*.72, innerHeight*.48, false, 'green');
@@ -730,8 +815,92 @@
     return 'mid';
   }
 
+  function specialUppercut(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    const other=f.isPlayer?enemy:player;
+    f.specialType='uppercut';
+    f.specialT=.72;
+    f.attack='punch';
+    f.attackVariant='up';
+    f.attackT=.72;
+
+    // 一瞬しゃがんだ後に、画面上方向へ強く跳ぶ
+    setTimeout(()=>{
+      if(!f || gameOver) return;
+      f.vy=-520;
+      f.vx+=f.face*70;
+
+      const dist=Math.hypot(other.x-f.x, other.y-f.y);
+      if(dist<105 && other.y<f.y+35){
+        damageHit(f,other,8.0*f.damageMul,90*f.face,-230);
+      }
+
+      comboEl.textContent='かえる跳びアッパー!';
+      setTimeout(()=>{
+        if(comboEl.textContent==='かえる跳びアッパー!') comboEl.textContent='';
+      },600);
+    },180);
+
+    return true;
+  }
+
+  function specialDropKick(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    const other=f.isPlayer?enemy:player;
+    f.specialType='dropkick';
+    f.specialT=.62;
+    f.attack='kick';
+    f.attackVariant='mid';
+    f.attackT=.62;
+
+    // 水中なので超高速ではなく、少し溜めてから強く前進
+    setTimeout(()=>{
+      if(!f || gameOver) return;
+      f.vx += f.face*470;
+      f.vy *= .25;
+
+      const dist=Math.hypot(other.x-f.x, other.y-f.y);
+      if(dist<130 && Math.abs(other.y-f.y)<80){
+        damageHit(f,other,10.0*f.damageMul,240*f.face,-35);
+      }
+
+      comboEl.textContent='ドロップキック!';
+      setTimeout(()=>{
+        if(comboEl.textContent==='ドロップキック!') comboEl.textContent='';
+      },600);
+    },145);
+
+    return true;
+  }
+
+  function trySpecial(f,kind){
+    if(!f || f.type!=='green') return false;
+
+    // ↓ ↑ ＋ パンチ
+    if(kind==='punch' && hasCommand(['down','up'],720)){
+      clearCommand();
+      return specialUppercut(f);
+    }
+
+    // 後ろ → 前 ＋ キック
+    // faceに応じて「後ろ」「前」を決める
+    const back=f.face>0?'left':'right';
+    const forward=f.face>0?'right':'left';
+    if(kind==='kick' && hasCommand([back,forward],720)){
+      clearCommand();
+      return specialDropKick(f);
+    }
+
+    return false;
+  }
+
   function attack(f, kind) {
     if(gameOver || f.guard) return;
+
+    // 通常攻撃より先に必殺技コマンドを判定
+    if(trySpecial(f,kind)) return;
 
     // 舌で引かれている最中だけは、stun中でも舌による投げ抜けを受け付ける。
     const pullerForEscape = f.isPlayer ? enemy : player;

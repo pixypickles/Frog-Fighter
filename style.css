@@ -207,3 +207,28 @@ button{font:inherit;color:inherit}
   touch-action:manipulation;
   cursor:pointer;
 }
+
+.practice-exit-btn{
+  position:absolute;
+  top:max(46px, calc(env(safe-area-inset-top) + 42px));
+  right:max(12px, env(safe-area-inset-right));
+  z-index:20;
+  border:2px solid rgba(255,255,255,.55);
+  border-radius:999px;
+  padding:8px 15px;
+  background:rgba(0,52,66,.42);
+  color:#fff;
+  font-size:12px;
+  font-weight:1000;
+  backdrop-filter:blur(4px);
+  touch-action:manipulation;
+}
+.practice-exit-btn:active{
+  transform:translateY(2px);
+}
+.special-hint{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1.35;
+}
