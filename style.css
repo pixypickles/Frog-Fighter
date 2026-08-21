@@ -253,3 +253,10 @@ button{font:inherit;color:inherit}
     font-size:clamp(10px,1.65vw,17px);
   }
 }
+
+.black-frog{
+  filter:grayscale(1) brightness(.22) contrast(1.5);
+}
+.purple-frog{
+  filter:hue-rotate(105deg) saturate(1.55) brightness(.85);
+}

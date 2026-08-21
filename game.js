@@ -25,8 +25,10 @@
   let comboHits = 0;
 
   const stats = {
-    green: { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
-    blue:  { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 }
+    green:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
+    blue:   { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 },
+    black:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
+    purple: { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 }
   };
 
   function show(name) {
@@ -371,6 +373,13 @@
     draw() {
       ctx.save();
       ctx.translate(this.x,this.y);
+
+      // v2.5 新キャラの色。必殺技・性能は後で個別調整。
+      if(this.type==='black'){
+        ctx.filter='grayscale(1) brightness(.28) contrast(1.45)';
+      }else if(this.type==='purple'){
+        ctx.filter='hue-rotate(105deg) saturate(1.5) brightness(.88)';
+      }
 
       // かえる跳びアッパーの溜め：少ししゃがむ
       if(this.specialType==='uppercut' && this.specialT>.48){
