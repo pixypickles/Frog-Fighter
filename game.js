@@ -2435,6 +2435,51 @@
     });
   }
 
+  function resolveFighterOverlap(a,b){
+    if(!a || !b) return;
+
+    // 投げ中など、意図的に重なる演出では無理に離さない
+    if(a.throwState || b.throwState) return;
+
+    const dx=b.x-a.x;
+    const dy=b.y-a.y;
+    const dist=Math.hypot(dx,dy) || 0.001;
+
+    // 水中らしく、見た目の半径より少し小さめの接触距離
+    const minDist=(a.radius+b.radius)*0.76;
+    if(dist>=minDist) return;
+
+    const overlap=minDist-dist;
+    const nx=dx/dist;
+    const ny=dy/dist;
+
+    // 基本は左右に押し分ける。上下は少しだけ。
+    const pushX=overlap*0.52;
+    const pushY=overlap*0.12;
+
+    // 両者を半分ずつ離す
+    a.x-=nx*pushX;
+    b.x+=nx*pushX;
+    a.y-=ny*pushY;
+    b.y+=ny*pushY;
+
+    // 互いに突っ込んでいる速度も少し殺す
+    const relVx=b.vx-a.vx;
+    if(relVx*nx<0){
+      a.vx*=0.72;
+      b.vx*=0.72;
+    }
+
+    // 画面外へ押し出さない
+    const padA=Math.max(38,a.radius*.9);
+    const padB=Math.max(38,b.radius*.9);
+
+    a.x=Math.max(padA,Math.min(innerWidth-padA,a.x));
+    b.x=Math.max(padB,Math.min(innerWidth-padB,b.x));
+    a.y=Math.max(55,Math.min(innerHeight-48,a.y));
+    b.y=Math.max(55,Math.min(innerHeight-48,b.y));
+  }
+
   function drawBackground(dt){
     const themes=[
       {top:'#42c7d6',mid:'#10849a',bottom:'#075469',floor:'#075047',plant:'#16855f',shaft:'rgba(255,255,220,.07)'},
@@ -2503,6 +2548,11 @@
       }
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
+
+      // キャラクター同士が同じ位置へめり込まないよう、柔らかく押し合う
+      if(gameMode==='battle' || gameMode==='story'){
+        resolveFighterOverlap(player,enemy);
+      }
 
       // ラファエルさんの水圧カッター更新
       if(leafMiniActive){
