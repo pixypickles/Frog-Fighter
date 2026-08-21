@@ -94,6 +94,10 @@
       // 壁受け身
       this.wallTechT=0;
 
+      // 水中ダッシュ
+      this.dashT=0;
+      this.dashCooldown=0;
+
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
       this.tonguePullTimer=0;       // 2回目の舌入力を受け付ける時間
@@ -110,6 +114,8 @@
       if (this.waveCooldown>0) this.waveCooldown-=dt;
       if (this.guardBreakT>0) this.guardBreakT-=dt;
       if (this.wallTechT>0) this.wallTechT-=dt;
+      if (this.dashT>0) this.dashT-=dt;
+      if (this.dashCooldown>0) this.dashCooldown-=dt;
       if (this.attackT>0) {
         this.attackT-=dt;
         if (this.attackT<=0) this.attack=null;
@@ -135,8 +141,13 @@
       }
 
       this.vy += this.sink * dt;
-      this.vx *= Math.pow(.56, dt);
-      this.vy *= Math.pow(.68, dt);
+      if(this.dashT>0){
+        this.vx *= Math.pow(.82, dt);
+        this.vy *= Math.pow(.86, dt);
+      }else{
+        this.vx *= Math.pow(.56, dt);
+        this.vy *= Math.pow(.68, dt);
+      }
 
       // 舌で引かれている側は、舌の持ち主へゆっくり吸い寄せられる
       const puller = this.isPlayer ? enemy : player;
@@ -459,7 +470,84 @@
   }
 
   let player, enemy;
-  const input={x:0,y:0};
+  const input={
+    x:0,y:0,
+    currentDir:null,
+    lastReleasedDir:null,
+    lastReleasedTime:0,
+    dashUsedThisTouch:false
+  };
+
+  function getStickDirection(x,y){
+    const mag=Math.hypot(x,y);
+    if(mag<.40) return null;
+
+    const angle=Math.atan2(y,x);
+    const oct=Math.round(angle/(Math.PI/4));
+    const dirs=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    return dirs[(oct+8)%8];
+  }
+
+  function dashVector(dir){
+    const s=Math.SQRT1_2;
+    const map={
+      right:[1,0],
+      downRight:[s,s],
+      down:[0,1],
+      downLeft:[-s,s],
+      left:[-1,0],
+      upLeft:[-s,-s],
+      up:[0,-1],
+      upRight:[s,-s]
+    };
+    return map[dir] || [0,0];
+  }
+
+  function doDash(dir){
+    if(!player || gameOver || player.stun>0 || player.guard || player.throwState || player.dashCooldown>0) return false;
+
+    const [dx,dy]=dashVector(dir);
+    player.vx += dx*340;
+    player.vy += dy*275;
+    player.dashT=.25;
+    player.dashCooldown=.44;
+
+    comboEl.textContent='DASH!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='DASH!') comboEl.textContent='';
+    },380);
+
+    for(let i=0;i<12;i++){
+      particles.push({
+        x:player.x-dx*(12+Math.random()*30),
+        y:player.y-dy*(12+Math.random()*30)+(Math.random()-.5)*30,
+        vx:-dx*(55+Math.random()*90)+(Math.random()-.5)*35,
+        vy:-dy*(55+Math.random()*90)+(Math.random()-.5)*35,
+        t:.34+Math.random()*.14,
+        r:2+Math.random()*4,
+        type:'guard'
+      });
+    }
+    return true;
+  }
+
+  function checkTouchDash(){
+    const dir=getStickDirection(input.x,input.y);
+    input.currentDir=dir;
+    if(!dir || input.dashUsedThisTouch) return;
+
+    const now=performance.now();
+    if(
+      input.lastReleasedDir===dir &&
+      now-input.lastReleasedTime<=450
+    ){
+      if(doDash(dir)){
+        input.dashUsedThisTouch=true;
+        input.lastReleasedDir=null;
+        input.lastReleasedTime=0;
+      }
+    }
+  }
 
   function startGame() {
     gameOver=false; restartButton.hidden=true; comboHits=0; comboTimer=0; comboEl.textContent='';
@@ -628,10 +716,27 @@
     dx*=scale;dy*=scale;
     input.x=dx/max; input.y=dy/max;
     knob.style.transform=`translate(${dx}px,${dy}px)`;
+    checkTouchDash();
   }
-  zone.addEventListener('touchstart',e=>{const t=e.changedTouches[0];stickId=t.identifier;stickMove(t);e.preventDefault()},{passive:false});
+  zone.addEventListener('touchstart',e=>{
+    const t=e.changedTouches[0];
+    stickId=t.identifier;
+    input.dashUsedThisTouch=false;
+    stickMove(t);
+    e.preventDefault();
+  },{passive:false});
   zone.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===stickId)stickMove(t);e.preventDefault()},{passive:false});
-  function clearStick(){stickId=null;input.x=input.y=0;knob.style.transform='translate(0,0)'}
+  function clearStick(){
+    if(input.currentDir && !input.dashUsedThisTouch){
+      input.lastReleasedDir=input.currentDir;
+      input.lastReleasedTime=performance.now();
+    }
+    stickId=null;
+    input.x=input.y=0;
+    input.currentDir=null;
+    input.dashUsedThisTouch=false;
+    knob.style.transform='translate(0,0)';
+  }
   zone.addEventListener('touchend',clearStick);zone.addEventListener('touchcancel',clearStick);
 
   document.querySelectorAll('.action').forEach(btn=>{
@@ -673,9 +778,22 @@
 
   // Keyboard support for desktop testing
   const keys={};
+  const keyDashTimes={};
   addEventListener('keydown',e=>{
-    keys[e.key.toLowerCase()]=true;
+    const key=e.key.toLowerCase();
+    keys[key]=true;
     if(e.repeat)return;
+
+    if(['w','a','s','d'].includes(key)){
+      const now=performance.now();
+      if(keyDashTimes[key] && now-keyDashTimes[key]<=450){
+        const map={w:'up',a:'left',s:'down',d:'right'};
+        doDash(map[key]);
+        keyDashTimes[key]=0;
+      }else{
+        keyDashTimes[key]=now;
+      }
+    }
     if(e.key==='j')attack(player,'punch');
     if(e.key==='k')attack(player,'kick');
     if(e.key==='l')attack(player,'tongue');
