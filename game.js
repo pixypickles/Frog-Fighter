@@ -260,6 +260,9 @@
       this.counterReady=false;
       this.tackleArmedT=0;
       this.tackleHit=false;
+      this.piranhaRushHit=false;
+      this.piranhaDivePhase=0;
+      this.piranhaDiveTargetX=0;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -381,6 +384,25 @@
             damageHit(this,other,(last?4.0:2.2)*this.damageMul,
                       (last?145:45)*this.face,last?105:35);
           }
+        }
+      }
+
+      // リヴァイアさん：高速突進噛みつき
+      if(this.specialType==='piranhaRush' && !this.piranhaRushHit){
+        const other=this.isPlayer?enemy:player;
+        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+12){
+          this.piranhaRushHit=true; damageHit(this,other,9.2*this.damageMul,265*this.face,-35);
+          other.hurtFace='both'; other.hurtFaceT=.65;
+        }
+      }
+      // リヴァイアさん：上空から急降下
+      if((this.specialType==='piranhaDivePunch'||this.specialType==='piranhaDiveKick') && this.piranhaDivePhase===2){
+        const other=this.isPlayer?enemy:player;
+        if(other && Math.hypot(other.x-this.x,other.y-this.y)<other.radius+this.radius+15){
+          this.piranhaDivePhase=3;
+          const side=this.specialType==='piranhaDivePunch'?1:-1;
+          damageHit(this,other,8.4*this.damageMul,120*this.face*side,245);
+          other.hurtFace='both'; other.hurtFaceT=.7;
         }
       }
 
@@ -523,6 +545,12 @@
       // ピラニア：リヴァイアサンさん
       if(this.type==='piranha'){
         if(this.face<0) ctx.scale(-1,1);
+        // パンチは前転で背びれ斬り、キックはバク転で尻尾斬り
+        if(this.attack==='punch' && this.specialType!=='piranhaDivePunch'){
+          const t=Math.max(0,Math.min(1,this.attackT/.34)); ctx.rotate((1-t)*Math.PI*2);
+        }else if(this.attack==='kick' && this.specialType!=='piranhaDiveKick'){
+          const t=Math.max(0,Math.min(1,this.attackT/.40)); ctx.rotate(-(1-t)*Math.PI*2);
+        }
         if(this.flash>0) ctx.globalAlpha=.55;
 
         // 胴体
@@ -1792,6 +1820,31 @@
   }
 
 
+  function specialPiranhaRush(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    f.specialType='piranhaRush'; f.specialT=.72; f.attack='tongue'; f.attackT=.72;
+    f.piranhaRushHit=false; f.vx += f.face*610;
+    comboEl.textContent='高速突進噛みつき!';
+    setTimeout(()=>{if(comboEl.textContent==='高速突進噛みつき!')comboEl.textContent='';},650);
+    return true;
+  }
+
+  function specialPiranhaDive(f,variant){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    const other=f.isPlayer?enemy:player;
+    f.specialType=variant==='punch'?'piranhaDivePunch':'piranhaDiveKick';
+    f.specialT=1.15; f.attack=variant; f.attackT=1.15; f.piranhaDivePhase=1;
+    const offset=(variant==='punch'?42:-42)*f.face;
+    f.piranhaDiveTargetX=Math.max(45,Math.min(innerWidth-45,(other?other.x:f.x)+offset));
+    f.vy=-620; f.vx*=.15;
+    comboEl.textContent=variant==='punch'?'急降下背びれ!':'急降下テール!';
+    setTimeout(()=>{
+      if(gameOver || !f || !f.specialType || !f.specialType.startsWith('piranhaDive')) return;
+      f.x=f.piranhaDiveTargetX; f.y=-42; f.vx=0; f.vy=690; f.piranhaDivePhase=2;
+    },330);
+    return true;
+  }
+
   function specialPressureBlade(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
     f.specialType='pressureBlade'; f.specialT=.42; f.attack='punch'; f.attackT=.42;
@@ -1934,6 +1987,13 @@
       }
     }
 
+    if(f.type==='piranha'){
+      const back=f.face>0?'left':'right', forward=f.face>0?'right':'left';
+      if(kind==='tongue' && hasCommand([back,forward],850)){ clearCommand(); return specialPiranhaRush(f); }
+      if(kind==='punch' && hasCommand(['down','up'],900)){ clearCommand(); return specialPiranhaDive(f,'punch'); }
+      if(kind==='kick' && hasCommand(['down','up'],900)){ clearCommand(); return specialPiranhaDive(f,'kick'); }
+    }
+
     if(f.type==='yellow'){
       const forward=f.face>0?'right':'left';
       const downForward=f.face>0?'downRight':'downLeft';
@@ -1995,10 +2055,9 @@
 
     // 非カエル種の舌ボタンは、それぞれ固有の近接攻撃に置換
     if(kind==='tongue' && f.type==='piranha'){
-      f.attack='punch'; f.attackT=.30;
+      f.attack='tongue'; f.attackT=.34; f.vx += f.face*115;
       const other=f.isPlayer?enemy:player;
-      const dist=Math.hypot(other.x-f.x,other.y-f.y);
-      if(dist<82) setTimeout(()=>damageHit(f,other,4.4*f.damageMul,80*f.face,-5),95);
+      setTimeout(()=>{ if(other && Math.hypot(other.x-f.x,other.y-f.y)<88) damageHit(f,other,4.4*f.damageMul,92*f.face,-5); },105);
       return;
     }
 
