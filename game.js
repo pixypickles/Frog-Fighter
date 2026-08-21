@@ -1628,11 +1628,11 @@
       owner:f,
       x:f.x+f.face*72,
       y:f.y,
-      vx:f.face*210,
-      t:1.85,
-      life:1.85,
+      vx:f.face*245,
+      t:1.45,
+      life:1.45,
       hit:false,
-      size:1.35
+      size:1.0
     });
     comboEl.textContent='水圧カッター!';
     setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},900);
@@ -2391,61 +2391,57 @@
     drawBackground(dt);
     player.draw();enemy.draw();
 
-    // ラファエルさん：水圧カッターは必ず背景描画の「後」に描く
+    // ラファエルさん：控えめな三日月型の水圧カッター
+    // 描画順だけは修正版のまま。見た目は最初の予定に近くする。
     pressureBlades.forEach(p=>{
       const a=Math.max(0,p.t/p.life);
-      const s=p.size||1;
 
       ctx.save();
       ctx.translate(p.x,p.y);
-      if(p.vx<0)ctx.scale(-1,1);
-      ctx.scale(s,s);
+      if(p.vx<0) ctx.scale(-1,1);
 
-      // まず通常合成で白い本体を確実に見せる
-      ctx.globalAlpha=.98*a;
-      ctx.strokeStyle='#f2ffff';
-      ctx.lineWidth=12;
+      ctx.globalCompositeOperation='lighter';
+
+      // 薄い水色の三日月
+      ctx.globalAlpha=.34*a;
+      ctx.strokeStyle='#77e8ff';
+      ctx.lineWidth=15;
       ctx.lineCap='round';
       ctx.beginPath();
-      ctx.arc(0,0,34,-1.18,1.18);
+      ctx.arc(0,0,28,-1.05,1.05);
       ctx.stroke();
 
-      // 三日月の先端
-      ctx.fillStyle='#f8ffff';
-      ctx.beginPath();
-      ctx.moveTo(17,-30);
-      ctx.lineTo(48,0);
-      ctx.lineTo(17,30);
-      ctx.closePath();
-      ctx.fill();
-
-      // 発光
-      ctx.globalCompositeOperation='lighter';
-      ctx.globalAlpha=.48*a;
-      ctx.strokeStyle='#67ddff';
-      ctx.lineWidth=26;
-      ctx.beginPath();
-      ctx.arc(0,0,35,-1.20,1.20);
-      ctx.stroke();
-
-      // 内側の青い輪郭
-      ctx.globalAlpha=.88*a;
-      ctx.strokeStyle='#26bfe9';
+      // 中心の細い白い水圧線
+      ctx.globalAlpha=.62*a;
+      ctx.strokeStyle='#d8fbff';
       ctx.lineWidth=5;
       ctx.beginPath();
-      ctx.arc(-3,0,25,-1.10,1.10);
+      ctx.arc(0,0,27,-1.03,1.03);
       ctx.stroke();
 
-      // 泡の軌跡
-      ctx.globalAlpha=.72*a;
-      ctx.fillStyle='#eaffff';
-      for(let i=0;i<5;i++){
-        const bx=-34-i*12;
-        const by=(i%2===0?-1:1)*(7+i*2);
-        ctx.beginPath();
-        ctx.arc(bx,by,3.2+(i%2),0,Math.PI*2);
-        ctx.fill();
-      }
+      // 内側に少しだけ青
+      ctx.globalAlpha=.38*a;
+      ctx.strokeStyle='#69d9ff';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(-2,0,22,-1.0,1.0);
+      ctx.stroke();
+
+      // 後ろに小さな泡を少量
+      ctx.globalAlpha=.42*a;
+      ctx.fillStyle='#dffcff';
+
+      ctx.beginPath();
+      ctx.arc(-26,-9,3,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(-35,7,2.5,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(-44,-3,2,0,Math.PI*2);
+      ctx.fill();
 
       ctx.restore();
     });
