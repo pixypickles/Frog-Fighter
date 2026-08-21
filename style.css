@@ -88,3 +88,45 @@ button{font:inherit;color:inherit}
   letter-spacing:.12em;
   text-shadow:0 2px 3px rgba(0,0,0,.25);
 }
+
+.mode-menu{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  width:min(330px,78vw);
+  margin:10px auto 0;
+}
+.mode-menu button{
+  min-height:44px;
+  border-radius:18px;
+  border:2px solid rgba(255,255,255,.58);
+  font-weight:1000;
+  letter-spacing:.04em;
+}
+.practice-btn{
+  background:rgba(157,239,192,.68);
+}
+.future-btn{
+  background:rgba(255,255,255,.18);
+  opacity:.65;
+}
+.special-hint{
+  margin-top:7px;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.35;
+  opacity:.88;
+}
+.practice-label{
+  position:absolute;
+  top:54px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:15;
+  padding:5px 13px;
+  border-radius:999px;
+  background:rgba(0,52,66,.42);
+  border:1px solid rgba(255,255,255,.45);
+  font-weight:1000;
+  pointer-events:none;
+}

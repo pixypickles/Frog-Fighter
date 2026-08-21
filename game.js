@@ -469,7 +469,85 @@
     }
   }
 
+
+  class PracticeDummy {
+    constructor(){
+      this.x=innerWidth*.72;
+      this.y=innerHeight*.48;
+      this.vx=0; this.vy=0;
+      this.radius=34;
+      this.hp=999999;
+      this.guard=false;
+      this.stun=0;
+      this.throwState=null;
+      this.flash=0;
+      this.face=-1;
+      this.isPlayer=false;
+    }
+    hit(dmg,kx,ky){
+      this.vx+=kx*.72;
+      this.vy+=ky*.72;
+      this.flash=.13;
+      this.stun=.08;
+      spawnImpact(this.x,this.y,'hit');
+    }
+    update(dt){
+      if(this.flash>0)this.flash-=dt;
+      if(this.stun>0)this.stun-=dt;
+      // 葉っぱなのでゆっくり元の高さへ漂う
+      this.vy += Math.sin(performance.now()/650)*5*dt;
+      this.vx *= Math.pow(.28,dt);
+      this.vy *= Math.pow(.42,dt);
+      this.x += this.vx*dt;
+      this.y += this.vy*dt;
+      this.x=Math.max(innerWidth*.48,Math.min(innerWidth-55,this.x));
+      this.y=Math.max(95,Math.min(innerHeight-80,this.y));
+    }
+    draw(){
+      ctx.save();
+      ctx.translate(this.x,this.y);
+      ctx.rotate(-.18 + Math.sin(performance.now()/700)*.08);
+      if(this.flash>0)ctx.globalAlpha=.55;
+
+      // 水中を漂う丸い葉っぱ
+      ctx.fillStyle='#72c95d';
+      ctx.beginPath();
+      ctx.ellipse(0,0,38,25,-.18,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.strokeStyle='#397e3d';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(-27,8);
+      ctx.quadraticCurveTo(0,0,29,-8);
+      ctx.stroke();
+
+      ctx.strokeStyle='#4b9950';
+      ctx.lineWidth=2;
+      for(let i=-15;i<=15;i+=10){
+        ctx.beginPath();
+        ctx.moveTo(i,1);
+        ctx.lineTo(i-9,-10);
+        ctx.stroke();
+      }
+
+      // 練習相手だと分かる小さな的
+      ctx.strokeStyle='rgba(255,255,255,.72)';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.arc(0,0,11,0,Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0,0,4,0,Math.PI*2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  }
+
   let player, enemy;
+  let gameMode='battle'; // battle | practice
+  let practiceLabel=null;
   const input={
     x:0,y:0,
     currentDir:null,
@@ -549,7 +627,34 @@
     }
   }
 
+
+  function startPractice(){
+    gameMode='practice';
+    gameOver=false;
+    comboHits=0;
+    comboTimer=0;
+
+    player=new Fighter(innerWidth*.28,innerHeight*.48,true,selected||'green');
+    enemy=new PracticeDummy();
+
+    if(title) title.classList.add('hidden');
+    if(select) select.classList.add('hidden');
+    if(game) game.classList.remove('hidden');
+
+    if(!practiceLabel){
+      practiceLabel=document.createElement('div');
+      practiceLabel.className='practice-label';
+      practiceLabel.textContent='操作練習　∞';
+      document.body.appendChild(practiceLabel);
+    }
+    practiceLabel.style.display='block';
+
+    updateHud();
+  }
+
   function startGame() {
+    gameMode='battle';
+    if(practiceLabel) practiceLabel.style.display='none';
     gameOver=false; restartButton.hidden=true; comboHits=0; comboTimer=0; comboEl.textContent='';
     player = new Fighter(innerWidth*.28, innerHeight*.52, true, selectedFighter);
     enemy = new Fighter(innerWidth*.72, innerHeight*.48, false, 'green');
@@ -676,6 +781,7 @@
     // 攻撃側に少し長めの隙を作る。
     const justGuard = target.guard && target.guardStartT>0;
     target.hit(dmg,kx,ky);
+    if(gameMode==='practice' && target===enemy) target.hp=999999;
 
     if(justGuard){
       attacker.stun=Math.max(attacker.stun,.42);
@@ -696,6 +802,7 @@
   }
 
   function endGame(playerWon){
+    if(gameMode==='practice') return;
     gameOver=true; running=true;
     comboEl.textContent = playerWon ? 'YOU WIN!' : 'YOU LOSE';
     restartButton.hidden=false;
@@ -802,6 +909,7 @@
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key==='i'&&player)player.guard=false});
 
   function enemyAI(dt){
+    if(gameMode==='practice') return;
     if(gameOver)return;
 
     // CPUも舌で引かれている時は、たまに投げ抜けを狙う。
@@ -986,3 +1094,27 @@
   resize();
   requestAnimationFrame(loop);
 })();
+
+  // v1.5 mode menu
+  const practiceBtn=document.getElementById('practiceBtn');
+  if(practiceBtn){
+    practiceBtn.addEventListener('click',()=>{
+      // キャラ選択を飛ばさず、現在選択中のカエルで練習開始
+      startPractice();
+    });
+    practiceBtn.addEventListener('touchend',e=>{
+      e.preventDefault();
+      startPractice();
+    },{passive:false});
+  }
+
+  // キャラクター選択カードの下に、将来の専用必殺技欄を表示。
+  document.querySelectorAll('.char-card, .character-card, [data-char]').forEach((card,i)=>{
+    if(card.querySelector('.special-hint')) return;
+    const hint=document.createElement('div');
+    hint.className='special-hint';
+    hint.textContent=i===0
+      ? '専用必殺技：準備中　↓↘→＋パンチ 予定'
+      : '専用必殺技：準備中　←→＋舌 予定';
+    card.appendChild(hint);
+  });
