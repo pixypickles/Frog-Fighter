@@ -16,13 +16,14 @@
   let last = performance.now();
   let bubbles = [];
   let particles = [];
+  let hitRings = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
 
   const stats = {
-    green: { speed: 185, tongue: 210, damage: 1.0, sink: 9, hue: 0 },
-    blue:  { speed: 210, tongue: 260, damage: 0.88, sink: 6, hue: 95 }
+    green: { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
+    blue:  { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 }
   };
 
   function show(name) {
@@ -80,6 +81,8 @@
       this.radius=35; this.hp=100; this.face = isPlayer ? 1 : -1;
       this.attack=null; this.attackT=0; this.stun=0; this.guard=false; this.tongueT=0;
       this.flash=0;
+      this.hurtFaceT=0;
+      this.hurtFace='wink';
 
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
@@ -92,6 +95,7 @@
     update(dt) {
       if (this.stun>0) this.stun-=dt;
       if (this.flash>0) this.flash-=dt;
+      if (this.hurtFaceT>0) this.hurtFaceT-=dt;
       if (this.attackT>0) {
         this.attackT-=dt;
         if (this.attackT<=0) this.attack=null;
@@ -117,8 +121,8 @@
       }
 
       this.vy += this.sink * dt;
-      this.vx *= Math.pow(.48, dt);
-      this.vy *= Math.pow(.6, dt);
+      this.vx *= Math.pow(.56, dt);
+      this.vy *= Math.pow(.68, dt);
 
       // 舌で引かれている側は、舌の持ち主へゆっくり吸い寄せられる
       const puller = this.isPlayer ? enemy : player;
@@ -185,7 +189,10 @@
         dmg*=.22; kx*=.2; ky*=.2;
         spawnImpact(this.x,this.y,'guard');
       } else {
-        this.stun=.16; this.flash=.12;
+        this.stun=.18;
+        this.flash=.15;
+        this.hurtFaceT=.32;
+        this.hurtFace=Math.random()<.5?'wink':'both';
         spawnImpact(this.x,this.y,'hit');
       }
       this.hp=Math.max(0,this.hp-dmg);
@@ -226,15 +233,18 @@
       }
       ctx.stroke();
 
-      // ニュートラル腕。パンチ中は前腕を消して攻撃ポーズに差し替える。
-      ctx.strokeStyle='#58bd50';
-      ctx.lineWidth=10;
-      ctx.beginPath();
-      ctx.moveTo(-23,22); ctx.lineTo(-32,35);
-      if(this.attack!=='punch'){
-        ctx.moveTo(23,22); ctx.lineTo(32,35);
+      // ニュートラル腕。
+      // パンチ中・ガード中は通常腕を描かず、それぞれ専用ポーズに差し替える。
+      if(!this.guard){
+        ctx.strokeStyle='#58bd50';
+        ctx.lineWidth=10;
+        ctx.beginPath();
+        ctx.moveTo(-23,22); ctx.lineTo(-32,35);
+        if(this.attack!=='punch'){
+          ctx.moveTo(23,22); ctx.lineTo(32,35);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
 
       // 頭
       ctx.fillStyle='#63cf58';
@@ -249,19 +259,47 @@
       ctx.arc(19,-29,16,0,Math.PI*2);
       ctx.fill();
 
-      // 白目
-      ctx.fillStyle='#fff';
-      ctx.beginPath();
-      ctx.arc(-19,-30,10,0,Math.PI*2);
-      ctx.arc(19,-30,10,0,Math.PI*2);
-      ctx.fill();
+      // 目：通常時と被弾時で表情を変える
+      if(this.hurtFaceT>0){
+        ctx.strokeStyle='#182a2a';
+        ctx.lineWidth=4;
+        ctx.lineCap='round';
 
-      // 黒目
-      ctx.fillStyle='#182a2a';
-      ctx.beginPath();
-      ctx.arc(-16,-29,4,0,Math.PI*2);
-      ctx.arc(22,-29,4,0,Math.PI*2);
-      ctx.fill();
+        if(this.hurtFace==='both'){
+          // 両目をぎゅっと閉じる
+          ctx.beginPath();
+          ctx.moveTo(-28,-30); ctx.lineTo(-19,-26); ctx.lineTo(-10,-30);
+          ctx.moveTo(10,-30); ctx.lineTo(19,-26); ctx.lineTo(28,-30);
+          ctx.stroke();
+        }else{
+          // 片目を閉じ、もう片方は開く
+          ctx.fillStyle='#fff';
+          ctx.beginPath();
+          ctx.arc(19,-30,10,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.fillStyle='#182a2a';
+          ctx.beginPath();
+          ctx.arc(22,-29,4,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(-28,-30); ctx.lineTo(-19,-26); ctx.lineTo(-10,-30);
+          ctx.stroke();
+        }
+      }else{
+        ctx.fillStyle='#fff';
+        ctx.beginPath();
+        ctx.arc(-19,-30,10,0,Math.PI*2);
+        ctx.arc(19,-30,10,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle='#182a2a';
+        ctx.beginPath();
+        ctx.arc(-16,-29,4,0,Math.PI*2);
+        ctx.arc(22,-29,4,0,Math.PI*2);
+        ctx.fill();
+      }
 
       // ほっぺ
       ctx.fillStyle='rgba(255,130,150,.42)';
@@ -270,12 +308,16 @@
       ctx.arc(24,2,5,0,Math.PI*2);
       ctx.fill();
 
-      // 口
+      // 口：被弾時は口角を下げる
       ctx.strokeStyle='#255c31';
       ctx.lineWidth=3;
       ctx.lineCap='round';
       ctx.beginPath();
-      ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);
+      if(this.hurtFaceT>0){
+        ctx.arc(0,9,12,1.15*Math.PI,1.85*Math.PI);
+      }else{
+        ctx.arc(0,-3,14,.15*Math.PI,.85*Math.PI);
+      }
       ctx.stroke();
 
       ctx.restore();
@@ -321,11 +363,38 @@
       }
 
       if(this.guard){
-        ctx.strokeStyle='rgba(185,235,255,.75)';
-        ctx.lineWidth=8;
+        ctx.save();
+        ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
+        ctx.strokeStyle='#58bd50';
+        ctx.lineWidth=11;
+        ctx.lineCap='round';
+        ctx.lineJoin='round';
+
+        // ガードは胸の前で腕を交差。
+        // 描画上は常に右側が「敵に近い側」になる（face反転前提）。
+        // 近い側の腕は少し上へ、遠い側は真っ直ぐ内側へ。
         ctx.beginPath();
-        ctx.arc(22,8,59,-1.25,1.25);
+
+        // 遠い側の手：胸へ真っ直ぐ内側に差し込む
+        ctx.moveTo(-23,22);
+        ctx.lineTo(-8,19);
+        ctx.lineTo(10,18);
+
+        // 敵に近い側の手：上から斜めに胸を守る
+        ctx.moveTo(23,22);
+        ctx.lineTo(12,10);
+        ctx.lineTo(-5,16);
+
         ctx.stroke();
+
+        // 手先を少し丸く見せる
+        ctx.fillStyle='#68cf5f';
+        ctx.beginPath();
+        ctx.arc(10,18,6,0,Math.PI*2);
+        ctx.arc(-5,16,6,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
       }
 
       ctx.restore();
@@ -344,6 +413,7 @@
       x:Math.random()*innerWidth, y:Math.random()*innerHeight, r:2+Math.random()*6, s:10+Math.random()*26
     }));
     particles=[];
+    hitRings=[];
     running=true; last=performance.now();
   }
 
@@ -361,14 +431,14 @@
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
 
     if(kind==='punch'){
-      f.attack='punch';f.attackT=.28;
+      f.attack='punch';f.attackT=.34;
       if(dist<82 && Math.abs(other.y-f.y)<55){
-        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,58*dir,-6),95);
+        setTimeout(()=>damageHit(f,other,2.6*f.damageMul,52*dir,-5),125);
       }
     } else if(kind==='kick'){
-      f.attack='kick';f.attackT=.42;
+      f.attack='kick';f.attackT=.50;
       if(dist<100 && Math.abs(other.y-f.y)<70){
-        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,155*dir,-24),135);
+        setTimeout(()=>damageHit(f,other,5.2*f.damageMul,142*dir,-21),175);
       }
     } else if(kind==='tongue'){
       // 自分が舌で引き寄せられている最中に舌を押すと「投げ抜け」。
@@ -537,8 +607,27 @@
   }
 
   function spawnImpact(x,y,type){
-    const n=type==='guard'?7:11;
-    for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*180,vy:(Math.random()-.5)*180,t:.35,r:2+Math.random()*4,type});
+    const n=type==='guard'?8:16;
+    for(let i=0;i<n;i++){
+      particles.push({
+        x,y,
+        vx:(Math.random()-.5)*(type==='guard'?160:240),
+        vy:(Math.random()-.5)*(type==='guard'?160:240),
+        t:type==='guard'?.32:.42,
+        r:2+Math.random()*(type==='guard'?4:6),
+        type
+      });
+    }
+
+    // 当たった瞬間に広がるリングで、ヒットを見やすくする
+    hitRings.push({
+      x,y,
+      r:type==='guard'?12:10,
+      max:type==='guard'?42:58,
+      t:type==='guard'?.28:.34,
+      life:type==='guard'?.28:.34,
+      type
+    });
   }
 
   function drawBackground(dt){
@@ -567,8 +656,8 @@
       let ix=input.x+(keys['d']?1:0)-(keys['a']?1:0);
       let iy=input.y+(keys['s']?1:0)-(keys['w']?1:0);
       if(player.stun<=0&&!player.guard){
-        player.vx += ix*player.speed*dt*2.45;
-        player.vy += iy*player.speed*dt*2.0;
+        player.vx += ix*player.speed*dt*2.05;
+        player.vy += iy*player.speed*dt*1.68;
       }
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
@@ -582,10 +671,24 @@
     player.draw();enemy.draw();
 
     particles.forEach(p=>{p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.92;p.vy*=.92;
-      ctx.globalAlpha=Math.max(0,p.t/.35);ctx.fillStyle=p.type==='guard'?'#d9f5ff':'#fff3a3';
+      ctx.globalAlpha=Math.max(0,p.t/.42);ctx.fillStyle=p.type==='guard'?'#d9f5ff':'#fff3a3';
       ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
     });
     particles=particles.filter(p=>p.t>0);
+
+    hitRings.forEach(r=>{
+      r.t-=dt;
+      const p=1-Math.max(0,r.t)/r.life;
+      const radius=r.r+(r.max-r.r)*p;
+      ctx.globalAlpha=Math.max(0,r.t/r.life);
+      ctx.strokeStyle=r.type==='guard'?'#d9f5ff':'#fff7b0';
+      ctx.lineWidth=r.type==='guard'?4:6;
+      ctx.beginPath();
+      ctx.arc(r.x,r.y,radius,0,Math.PI*2);
+      ctx.stroke();
+      ctx.globalAlpha=1;
+    });
+    hitRings=hitRings.filter(r=>r.t>0);
   }
 
   resize();
