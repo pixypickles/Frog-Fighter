@@ -173,6 +173,7 @@
       this.specialT=0;
       this.specialType=null;
       this.specialHitDone=false;
+      this.screwSpinPhase=0;
 
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
@@ -198,6 +199,7 @@
           this.specialT=0;
           this.specialType=null;
           this.specialHitDone=false;
+          this.screwSpinPhase=0;
         }
       }
       if (this.attackT>0) {
@@ -253,11 +255,16 @@
       }
 
       if(this.throwState){
+        // 舌投げは従来どおり画面平面内でぐるぐる回転
         this.spinAngle += this.throwState.spinSpeed * dt;
       } else if(this.specialType==='screwDive'){
-        this.spinAngle += this.face*13.5*dt;
+        // スクリューダイブは「時計の針」回転ではなく、
+        // フィギュアスケーターのような身体の縦軸まわりの回転。
+        this.spinAngle *= Math.pow(.03, dt);
+        this.screwSpinPhase += 18.0 * dt;
       } else {
         this.spinAngle *= Math.pow(.03, dt);
+        this.screwSpinPhase *= Math.pow(.04, dt);
       }
 
       // ガブリエル：スクリューダイブ
@@ -393,8 +400,23 @@
         ctx.scale(1.08,.82);
       }
 
-      if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
-      if(this.face<0) ctx.scale(-1,1);
+      if(this.specialType==='screwDive'){
+        // 進行方向へ約35度傾けた姿勢は固定。
+        // そのうえで横幅を cos 波でつぶして反転させることで、
+        // フィギュアスケーターのような縦軸回転を疑似3D表現する。
+        const tilt = this.face * 0.61; // 約35度
+        const spinX = Math.cos(this.screwSpinPhase);
+
+        ctx.rotate(tilt);
+
+        // 完全に0幅になると消えて見えるので最低幅を少し残す。
+        const absX = Math.max(.16, Math.abs(spinX));
+        const signedX = spinX < 0 ? -absX : absX;
+        ctx.scale(signedX,1);
+      }else{
+        if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
+        if(this.face<0) ctx.scale(-1,1);
+      }
       if(this.flash>0) ctx.globalAlpha=.55;
 
       ctx.save();
@@ -982,6 +1004,7 @@
     f.specialType='screwDive';
     f.specialT=.72;
     f.specialHitDone=false;
+    f.screwSpinPhase=0;
     f.attack='kick';
     f.attackVariant='down';
     f.attackT=.72;
