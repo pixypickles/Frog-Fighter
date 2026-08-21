@@ -962,6 +962,7 @@
     return true;
   }
 
+
   function specialAquaStream(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
@@ -973,7 +974,6 @@
     f.attackVariant='down';
     f.attackT=.72;
 
-    // 足元から斜め前下へ伸びる水流。
     const startX=f.x+dir*28;
     const startY=f.y+42;
     const length=Math.max(innerWidth,innerHeight)*1.05;
@@ -1057,7 +1057,6 @@
   function trySpecial(f,kind){
     if(!f) return false;
 
-    // ミカエル（green）
     if(f.type==='green'){
       if(kind==='punch' && hasCommand(['down','up'],720)){
         clearCommand();
@@ -1072,20 +1071,17 @@
       }
     }
 
-    // ガブリエル（blue）
     if(f.type==='blue'){
       const backDown=f.face>0?'downLeft':'downRight';
       const forwardUp=f.face>0?'upRight':'upLeft';
       const backUp=f.face>0?'upLeft':'upRight';
       const forwardDown=f.face>0?'downRight':'downLeft';
 
-      // ↙ ↗ ＋ パンチ
       if(kind==='punch' && hasCommand([backDown,forwardUp],780)){
         clearCommand();
         return specialAquaTornado(f);
       }
 
-      // ↖ ↘ ＋ キック
       if(kind==='kick' && hasCommand([backUp,forwardDown],780)){
         clearCommand();
         return specialAquaStream(f);
