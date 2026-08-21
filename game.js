@@ -2435,49 +2435,36 @@
     });
   }
 
-  function resolveFighterOverlap(a,b){
+  function safeSeparateFighters(a,b){
     if(!a || !b) return;
 
-    // 投げ中など、意図的に重なる演出では無理に離さない
+    // Fighter同士だけ。練習用ダミーやミニゲームでは使わない。
+    if(typeof a.radius!=='number' || typeof b.radius!=='number') return;
+    if(typeof a.x!=='number' || typeof b.x!=='number') return;
+
+    // 投げ中は演出優先
     if(a.throwState || b.throwState) return;
 
     const dx=b.x-a.x;
-    const dy=b.y-a.y;
-    const dist=Math.hypot(dx,dy) || 0.001;
+    const minX=(a.radius+b.radius)*0.72;
 
-    // 水中らしく、見た目の半径より少し小さめの接触距離
-    const minDist=(a.radius+b.radius)*0.76;
-    if(dist>=minDist) return;
+    // 横方向に十分離れていれば何もしない
+    if(Math.abs(dx)>=minX) return;
 
-    const overlap=minDist-dist;
-    const nx=dx/dist;
-    const ny=dy/dist;
+    const sign=dx>=0 ? 1 : -1;
+    const overlap=minX-Math.abs(dx);
+    const push=overlap*.5;
 
-    // 基本は左右に押し分ける。上下は少しだけ。
-    const pushX=overlap*0.52;
-    const pushY=overlap*0.12;
+    a.x-=sign*push;
+    b.x+=sign*push;
 
-    // 両者を半分ずつ離す
-    a.x-=nx*pushX;
-    b.x+=nx*pushX;
-    a.y-=ny*pushY;
-    b.y+=ny*pushY;
+    // 押し合っている時だけ横速度を少し弱める
+    if(typeof a.vx==='number') a.vx*=.82;
+    if(typeof b.vx==='number') b.vx*=.82;
 
-    // 互いに突っ込んでいる速度も少し殺す
-    const relVx=b.vx-a.vx;
-    if(relVx*nx<0){
-      a.vx*=0.72;
-      b.vx*=0.72;
-    }
-
-    // 画面外へ押し出さない
-    const padA=Math.max(38,a.radius*.9);
-    const padB=Math.max(38,b.radius*.9);
-
-    a.x=Math.max(padA,Math.min(innerWidth-padA,a.x));
-    b.x=Math.max(padB,Math.min(innerWidth-padB,b.x));
-    a.y=Math.max(55,Math.min(innerHeight-48,a.y));
-    b.y=Math.max(55,Math.min(innerHeight-48,b.y));
+    // 画面内に戻す
+    a.x=Math.max(42,Math.min(innerWidth-42,a.x));
+    b.x=Math.max(42,Math.min(innerWidth-42,b.x));
   }
 
   function drawBackground(dt){
@@ -2549,10 +2536,14 @@
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
 
-      // キャラクター同士が同じ位置へめり込まないよう、柔らかく押し合う
-      if(gameMode==='battle' || gameMode==='story'){
-        resolveFighterOverlap(player,enemy);
+      // 対戦系のみ重なり防止。描画やミニゲームには影響させない。
+      if((gameMode==='battle' || gameMode==='story') &&
+         player instanceof Fighter &&
+         enemy instanceof Fighter){
+        safeSeparateFighters(player,enemy);
       }
+
+
 
       // ラファエルさんの水圧カッター更新
       if(leafMiniActive){
@@ -2758,7 +2749,10 @@
     }
 
     drawBackground(dt);
-    player.draw();enemy.draw();
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+    player.draw();
+    enemy.draw();
 
     // 同キャラ対戦時は相手側にRIVALマーク
     if(enemy && enemy.sameCharacter && gameMode==='battle'){
