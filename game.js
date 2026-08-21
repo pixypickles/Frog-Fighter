@@ -1628,9 +1628,9 @@
       owner:f,
       x:f.x+f.face*72,
       y:f.y,
-      vx:f.face*245,
-      t:1.45,
-      life:1.45,
+      vx:f.face*340,
+      t:1.20,
+      life:1.20,
       hit:false,
       size:1.0
     });
