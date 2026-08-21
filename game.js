@@ -509,15 +509,29 @@
         ctx.stroke();
       }
 
-      // リリスさん：リボンは目の後ろに差し込む
+      // リリスさん：目の後ろから左右だけ見えるリボン
       if(this.type==='purple'){
-        ctx.save(); ctx.translate(0,-38);
-        ctx.fillStyle='#ff86c8'; ctx.strokeStyle='#8b2f72'; ctx.lineWidth=2.5;
+        ctx.save();
+        ctx.translate(0,-35);
+        ctx.fillStyle='#ff86c8';
+        ctx.strokeStyle='#8b2f72';
+        ctx.lineWidth=2.5;
+
+        // 左側
         ctx.beginPath();
-        ctx.moveTo(-5,3); ctx.quadraticCurveTo(-31,-14,-33,3); ctx.quadraticCurveTo(-28,18,-6,8); ctx.closePath();
-        ctx.moveTo(5,3); ctx.quadraticCurveTo(31,-14,33,3); ctx.quadraticCurveTo(28,18,6,8); ctx.closePath();
+        ctx.moveTo(-25,5);
+        ctx.quadraticCurveTo(-47,-13,-52,3);
+        ctx.quadraticCurveTo(-48,19,-27,12);
+        ctx.closePath();
         ctx.fill(); ctx.stroke();
-        ctx.fillStyle='#ffd0eb'; ctx.beginPath(); ctx.arc(0,4,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+        // 右側
+        ctx.beginPath();
+        ctx.moveTo(25,5);
+        ctx.quadraticCurveTo(47,-13,52,3);
+        ctx.quadraticCurveTo(48,19,27,12);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
         ctx.restore();
       }
 
@@ -622,7 +636,7 @@
         if(this.specialType==='abyssCharge' || this.specialType==='abyssBurst'){
           ctx.lineTo(68,7);
         }else if(this.specialType==='hellCrashFinish'){
-          ctx.lineTo(50,38);
+          ctx.lineTo(42,48);
         }else if(this.specialType==='aquaTornado'){
           ctx.lineTo(48,-34);
         }else if(this.attackVariant==='up'){
@@ -693,7 +707,11 @@
           const held=Math.max(0,performance.now()-(this.chargeStartTime||performance.now()));
           intensity=.4+.6*Math.min(1,held/1150);
         }
-        drawRedAura(58,7,21,17,intensity);
+        if(this.specialType==='hellCrashFinish'){
+          drawRedAura(42,48,22,19,intensity);
+        }else{
+          drawRedAura(58,7,21,17,intensity);
+        }
       }
 
       if(this.specialType==='ribbonWhip'){
@@ -1258,27 +1276,75 @@
 
   function specialHellCrash(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
-    const other=f.isPlayer?enemy:player; if(!other) return false;
+
+    const other=f.isPlayer?enemy:player;
+    if(!other) return false;
+
     const dir=f.face;
-    f.specialType='hellCrash'; f.specialT=1.35; f.attack='punch'; f.attackT=1.35; f.specialHitDone=false;
-    comboEl.textContent='ヘルクラッシュ!'; setTimeout(()=>{if(comboEl.textContent==='ヘルクラッシュ!')comboEl.textContent='';},900);
-    f.vx += dir*340;
+    f.specialType='hellCrash';
+    f.specialT=.95;
+    f.attack='punch';
+    f.attackT=.95;
+    f.specialHitDone=false;
+
+    comboEl.textContent='ヘルクラッシュ!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='ヘルクラッシュ!') comboEl.textContent='';
+    },800);
+
+    // 最初は短く鋭い体当たり
+    f.vx += dir*355;
+
     const started=performance.now();
     const timer=setInterval(()=>{
-      if(gameOver || !f || !other || (f.specialType!=='hellCrash' && f.specialType!=='hellCrashFinish')){clearInterval(timer);return;}
-      if(f.specialType==='hellCrashFinish'){clearInterval(timer);return;}
-      const dx=(other.x-f.x)*dir, dy=Math.abs(other.y-f.y);
-      if(dx>-15 && dx<82 && dy<72){
-        other.stun=Math.max(other.stun,.12); other.vx=dir*245; other.vy*=.4; f.vx=dir*235;
-        const hitWall=dir>0?other.x>=innerWidth-58:other.x<=58;
-        if(hitWall){
-          f.specialType='hellCrashFinish'; f.specialT=.48; f.attack='punch'; f.attackVariant='down'; f.attackT=.48;
-          f.vx*=.08; other.vx*=.05;
-          setTimeout(()=>{if(gameOver)return;other.hurtFace='both';other.hurtFaceT=.55;damageHit(f,other,11.5*f.damageMul,45*dir,265);},145);
-        }
+      if(gameOver || !f || !other || f.specialType!=='hellCrash'){
+        clearInterval(timer);
+        return;
       }
-      if(performance.now()-started>1000)clearInterval(timer);
-    },24);
+
+      const dx=(other.x-f.x)*dir;
+      const dy=Math.abs(other.y-f.y);
+
+      // 体当たりが触れた瞬間、その場で打ち下ろしへ
+      if(dx>-16 && dx<84 && dy<72 && !f.specialHitDone){
+        f.specialHitDone=true;
+        clearInterval(timer);
+
+        f.vx*=.08;
+        other.vx*=.08;
+        other.vy*=.15;
+        other.stun=Math.max(other.stun,.32);
+
+        f.specialType='hellCrashFinish';
+        f.specialT=.48;
+        f.attack='punch';
+        f.attackVariant='down';
+        f.attackT=.48;
+
+        setTimeout(()=>{
+          if(gameOver) return;
+
+          // 赤オーラ拳が命中。横へ飛ばさず、水底へ勢いよく叩き落とす。
+          other.hurtFace='both';
+          other.hurtFaceT=.65;
+          damageHit(f,other,12.0*f.damageMul,18*dir,390);
+
+          // 打撃位置の小さな赤い衝撃
+          burstWaves.push({
+            x:other.x,
+            y:other.y-10,
+            t:.28,life:.28,
+            radius:12,max:62,
+            power:1
+          });
+        },125);
+      }
+
+      if(performance.now()-started>650){
+        clearInterval(timer);
+      }
+    },20);
+
     return true;
   }
 
