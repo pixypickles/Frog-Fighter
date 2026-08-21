@@ -173,7 +173,6 @@
       this.specialT=0;
       this.specialType=null;
       this.specialHitDone=false;
-      this.screwSpinPhase=0;
 
       // 舌システム
       this.tonguePullTarget=null;   // 今、舌で引き寄せている相手
@@ -199,7 +198,6 @@
           this.specialT=0;
           this.specialType=null;
           this.specialHitDone=false;
-          this.screwSpinPhase=0;
         }
       }
       if (this.attackT>0) {
@@ -255,30 +253,10 @@
       }
 
       if(this.throwState){
-        // 舌投げは従来どおり画面平面内でぐるぐる回転
+        // 舌投げだけは従来どおり画面平面内で回転
         this.spinAngle += this.throwState.spinSpeed * dt;
-      } else if(this.specialType==='screwDive'){
-        // スクリューダイブは「時計の針」回転ではなく、
-        // フィギュアスケーターのような身体の縦軸まわりの回転。
-        this.spinAngle *= Math.pow(.03, dt);
-        this.screwSpinPhase += 18.0 * dt;
       } else {
         this.spinAngle *= Math.pow(.03, dt);
-        this.screwSpinPhase *= Math.pow(.04, dt);
-      }
-
-      // ガブリエル：スクリューダイブ
-      // 下降中は身体そのものに当たり判定。
-      if(this.specialType==='screwDive' && !this.specialHitDone){
-        const other=this.isPlayer?enemy:player;
-        const active=this.specialT<=.60 && this.specialT>=.08 && this.vy>40;
-        if(other && active){
-          const hitDist=Math.hypot(other.x-this.x,other.y-this.y);
-          if(hitDist < other.radius + 42){
-            this.specialHitDone=true;
-            damageHit(this,other,9.0*this.damageMul,175*this.face,145);
-          }
-        }
       }
 
       // 必殺技の赤いオーラが出ている間は、手足そのものに当たり判定を持たせる。
@@ -400,23 +378,8 @@
         ctx.scale(1.08,.82);
       }
 
-      if(this.specialType==='screwDive'){
-        // 進行方向へ約35度傾けた姿勢は固定。
-        // そのうえで横幅を cos 波でつぶして反転させることで、
-        // フィギュアスケーターのような縦軸回転を疑似3D表現する。
-        const tilt = this.face * 0.61; // 約35度
-        const spinX = Math.cos(this.screwSpinPhase);
-
-        ctx.rotate(tilt);
-
-        // 完全に0幅になると消えて見えるので最低幅を少し残す。
-        const absX = Math.max(.16, Math.abs(spinX));
-        const signedX = spinX < 0 ? -absX : absX;
-        ctx.scale(signedX,1);
-      }else{
-        if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
-        if(this.face<0) ctx.scale(-1,1);
-      }
+      if(this.throwState || Math.abs(this.spinAngle)>.02) ctx.rotate(this.spinAngle);
+      if(this.face<0) ctx.scale(-1,1);
       if(this.flash>0) ctx.globalAlpha=.55;
 
       ctx.save();
@@ -561,7 +524,7 @@
       }
 
       // キックは脚だけ前へ
-      if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='screwDive'){
+      if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='aquaStream'){
         ctx.save();
         ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
         ctx.strokeStyle='#61d357';
@@ -596,16 +559,15 @@
         }
       }
 
-      if(this.specialType==='screwDive'){
+      if(this.specialType==='aquaStream'){
         ctx.save();
         ctx.filter = this.hue ? `hue-rotate(${this.hue}deg)` : 'none';
         ctx.strokeStyle='#61d357';
         ctx.lineWidth=13;
         ctx.lineCap='round';
         ctx.beginPath();
-        // 斜め下へ蹴り込む片脚
         ctx.moveTo(15,47);
-        ctx.lineTo(55,74);
+        ctx.lineTo(48,68);
         ctx.stroke();
         ctx.restore();
       }
@@ -987,7 +949,9 @@
       t:.72,
       life:.72,
       width:28,
-      hit:false
+      hit:false,
+      direction:'up',
+      source:'hand'
     });
 
     comboEl.textContent='アクアトルネード!';
@@ -998,27 +962,41 @@
     return true;
   }
 
-  function specialScrewDive(f){
+  function specialAquaStream(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
-    f.specialType='screwDive';
+    const dir=f.face;
+    f.specialType='aquaStream';
     f.specialT=.72;
     f.specialHitDone=false;
-    f.screwSpinPhase=0;
     f.attack='kick';
     f.attackVariant='down';
     f.attackT=.72;
 
-    // 少し溜めてから斜め前下へ回転しながら急降下
-    setTimeout(()=>{
-      if(!f || gameOver) return;
-      f.vx += f.face*300;
-      f.vy += 360;
-    },115);
+    // 足元から斜め前下へ伸びる水流。
+    const startX=f.x+dir*28;
+    const startY=f.y+42;
+    const length=Math.max(innerWidth,innerHeight)*1.05;
+    const dx=dir*.68;
+    const dy=.74;
 
-    comboEl.textContent='スクリューダイブ!';
+    aquaTornadoes.push({
+      owner:f,
+      startX,startY,
+      endX:startX+dx*length,
+      endY:startY+dy*length,
+      dir,
+      t:.68,
+      life:.68,
+      width:30,
+      hit:false,
+      direction:'down',
+      source:'foot'
+    });
+
+    comboEl.textContent='アクアストリーム!';
     setTimeout(()=>{
-      if(comboEl.textContent==='スクリューダイブ!') comboEl.textContent='';
+      if(comboEl.textContent==='アクアストリーム!') comboEl.textContent='';
     },650);
 
     return true;
@@ -1110,7 +1088,7 @@
       // ↖ ↘ ＋ キック
       if(kind==='kick' && hasCommand([backUp,forwardDown],780)){
         clearCommand();
-        return specialScrewDive(f);
+        return specialAquaStream(f);
       }
     }
 
@@ -1483,9 +1461,11 @@
         if(owner){
           const length=Math.max(innerWidth,innerHeight)*1.05;
           const dx=owner.face*.68;
-          const dy=-.74;
-          t.startX=owner.x+owner.face*35;
-          t.startY=owner.y-6;
+          const downward=t.direction==='down';
+          const dy=downward?.74:-.74;
+
+          t.startX=owner.x+owner.face*(t.source==='foot'?28:35);
+          t.startY=owner.y+(t.source==='foot'?42:-6);
           t.endX=t.startX+dx*length;
           t.endY=t.startY+dy*length;
           t.dir=owner.face;
