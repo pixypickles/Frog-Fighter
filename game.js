@@ -11,6 +11,9 @@
   const comboEl = document.getElementById('comboText');
   const restartButton = document.getElementById('restartButton');
   const titleReturnButton=document.getElementById('titleReturnButton');
+  const practiceHelp=document.getElementById('practiceHelp');
+  const practiceSpecialTitle=document.getElementById('practiceSpecialTitle');
+  const practiceSpecialMoves=document.getElementById('practiceSpecialMoves');
   const practiceExitButton = document.getElementById('practiceExitButton');
   const leafMiniHud=document.getElementById('leafMiniHud');
   const leafMiniTimeEl=document.getElementById('leafMiniTime');
@@ -160,6 +163,7 @@
       e.stopPropagation();
 
       gameMode='battle';
+      if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';}
       if(storyHud) storyHud.hidden=true;
       leafMiniActive=false;
       guardMiniActive=false;
@@ -185,6 +189,7 @@
       restartButton.hidden=true;
       titleReturnButton.hidden=true;
       comboEl.textContent='';
+      if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';}
       show('title');
     };
   }
@@ -1612,6 +1617,7 @@
 
   function startLeafMiniGame(){
     gameMode='leafMini';
+    if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';}
     gameOver=false;
     restartButton.hidden=true;
     comboHits=0; comboTimer=0; comboEl.textContent='';
@@ -1714,7 +1720,8 @@
   }
 
   function startGuardMiniGame(){
-    gameMode='guardMini'; gameOver=false; restartButton.hidden=true;
+    gameMode='guardMini';
+    if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';} gameOver=false; restartButton.hidden=true;
     comboHits=0; comboTimer=0; comboEl.textContent='';
     show('game'); resize();
     player=new Fighter(innerWidth*.25,innerHeight*.5,true,selectedFighter);
@@ -1747,6 +1754,7 @@
 
   function startPractice(){
     gameMode='practice';
+    updatePracticeHelp();
     gameOver=false;
     restartButton.hidden=true;
     comboHits=0;
@@ -1796,6 +1804,67 @@
 
   const playableTypes=['green','blue','black','purple','yellow','orange','piranha','crayfish'];
 
+  function practiceSpecialText(type){
+    const map={
+      green:[
+        '↓ ↑ ＋ パンチ：バーニングアッパー',
+        '← → ＋ キック：バーニングキック'
+      ],
+      blue:[
+        '↙ ↗ ＋ パンチ：アクアトルネード',
+        '↖ ↘ ＋ キック：アクアストリーム'
+      ],
+      black:[
+        '→ → ＋ パンチ：ヘルクラッシュ',
+        '後ろを押しながらパンチ長押し → 離す：アビスチャージ'
+      ],
+      purple:[
+        '舌×3：リボンラッシュ',
+        '後ろ ＋ ガード×2：ナマズ突進'
+      ],
+      yellow:[
+        '↓ → ＋ パンチ：水圧カッター',
+        '後ろ ＋ ガード×2：ヒーリングバブル'
+      ],
+      orange:[
+        'スティック1回転 ＋ ガード：ホワイトカウンター',
+        '← → ＋ ガード→パンチ：ガーディアンタックル'
+      ],
+      piranha:[
+        '← → ＋ 舌：高速突進噛みつき',
+        '↓ ↑ ＋ パンチ：前寄りへ急降下',
+        '↓ ↑ ＋ キック：後ろ寄りへ急降下'
+      ],
+      crayfish:[
+        'パンチ×3：クローラッシュ',
+        '↓ ↓ ＋ キック：ボトムスマッシュ'
+      ],
+      beelzebub:[
+        'BOSS専用技：準備中'
+      ]
+    };
+    return map[type] || ['専用必殺技：準備中'];
+  }
+
+  function updatePracticeHelp(){
+    if(!practiceHelp) return;
+    if(gameMode!=='practice'){
+      practiceHelp.hidden=true;
+      practiceHelp.style.display='none';
+      return;
+    }
+
+    const moves=practiceSpecialText(selectedFighter);
+    if(practiceSpecialTitle){
+      practiceSpecialTitle.textContent=`${fighterDisplayName(selectedFighter)} の必殺技`;
+    }
+    if(practiceSpecialMoves){
+      practiceSpecialMoves.innerHTML=moves.map(v=>`<div>${v}</div>`).join('');
+    }
+    practiceHelp.hidden=false;
+    practiceHelp.style.display='block';
+  }
+
   function fighterDisplayName(type){
     return {
       green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
@@ -1813,6 +1882,7 @@
 
   function startGame(mode='free', enemyType=null) {
     gameMode=mode==='story'?'story':'battle';
+    if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';}
     if(practiceLabel) practiceLabel.style.display='none';
     if(practiceExitButton) practiceExitButton.hidden=true;
     if(leafMiniHud){

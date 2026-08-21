@@ -426,3 +426,44 @@ button{font:inherit;color:inherit}
   transform:translateX(-50%);
   bottom:20px;
 }
+
+.practice-help{
+  position:fixed;
+  left:50%;
+  top:23%;
+  transform:translateX(-50%);
+  z-index:12;
+  width:min(560px,72vw);
+  padding:12px 16px;
+  border-radius:16px;
+  background:rgba(0,50,68,.28);
+  border:1px solid rgba(255,255,255,.20);
+  color:rgba(255,255,255,.78);
+  text-align:center;
+  pointer-events:none;
+  backdrop-filter:blur(1px);
+}
+
+.practice-help[hidden]{
+  display:none !important;
+}
+
+.practice-help-common{
+  font-size:clamp(11px,1.7vw,16px);
+  font-weight:900;
+  margin-bottom:7px;
+}
+
+.practice-help-title{
+  font-size:clamp(11px,1.6vw,15px);
+  font-weight:1000;
+  color:rgba(255,245,175,.88);
+  margin-bottom:4px;
+}
+
+.practice-help-moves{
+  font-size:clamp(10px,1.45vw,14px);
+  line-height:1.55;
+  font-weight:800;
+  white-space:normal;
+}

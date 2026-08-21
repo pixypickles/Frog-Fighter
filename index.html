@@ -15,7 +15,7 @@
       <h1>カエルファイター</h1>
       <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
       <p class="rotate-note">スマホを横持ちしてください</p>
-      <div class="start-version">VERSION 6.3</div>
+      <div class="start-version">VERSION 6.4</div>
       <button id="desktopStart" class="soft-btn">PCで試す</button>
     </section>
 
@@ -117,6 +117,14 @@
 
     <section id="gameScreen" class="screen game-screen">
       <canvas id="gameCanvas"></canvas>
+      <div id="practiceHelp" class="practice-help" hidden>
+        <div class="practice-help-common">
+          舌ボタンで掴み中に、もう一度舌ボタンで舌投げ
+        </div>
+        <div id="practiceSpecialTitle" class="practice-help-title"></div>
+        <div id="practiceSpecialMoves" class="practice-help-moves"></div>
+      </div>
+
       <div id="leafMiniHud" class="leaf-mini-hud" hidden>
         <strong>LEAF BREAK</strong>
         <span>残り <b id="leafMiniTime">60.0</b> 秒</span>
@@ -157,7 +165,7 @@
     <div id="portraitOverlay">
       <div class="portrait-frog">🐸</div>
       <strong>スマホを横持ちしてください</strong>
-      <span class="portrait-version">VERSION 6.3</span>
+      <span class="portrait-version">VERSION 6.4</span>
     </div>
   </div>
   <script src="game.js"></script>
