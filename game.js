@@ -21,6 +21,7 @@
   let guardWaves = [];
   let aquaTornadoes = [];
   let siltClouds = [];
+  let catfishCharges = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -29,7 +30,7 @@
     green:  { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 },
     blue:   { speed: 182, tongue: 260, damage: 0.88, sink: 5, hue: 95 },
     black:  { speed: 148, tongue: 225, damage: 1.22, sink: 9, hue: 0 },
-    purple: { speed: 160, tongue: 210, damage: 1.0, sink: 7, hue: 0 }
+    purple: { speed: 174, tongue: 245, damage: 0.92, sink: 5, hue: 0 }
   };
 
   function show(name) {
@@ -406,6 +407,11 @@
         ctx.filter='hue-rotate(105deg) saturate(1.5) brightness(.88)';
       }
 
+      // ヘルラッシュ中は少し低い姿勢
+      if(this.specialType==='hellRush' && this.specialT>.55){
+        ctx.translate(0,8); ctx.scale(1.04,.90);
+      }
+
       // かえる跳びアッパーの溜め：少ししゃがむ
       if(this.specialType==='uppercut' && this.specialT>.48){
         ctx.translate(0,10);
@@ -533,6 +539,16 @@
 
       ctx.restore();
 
+      // リリスさんの頭のリボン
+      if(this.type==='purple'){
+        ctx.save(); ctx.translate(0,-48);
+        ctx.fillStyle='#f5a3d8'; ctx.strokeStyle='rgba(110,45,105,.75)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.ellipse(-10,0,13,8,-.35,0,Math.PI*2);
+        ctx.ellipse(10,0,13,8,.35,0,Math.PI*2); ctx.fill();ctx.stroke();
+        ctx.fillStyle='#ffd0eb';ctx.beginPath();ctx.arc(0,1,6,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.restore();
+      }
+
       // ルシファーさんの顔の傷
       if(this.type==='black'){
         ctx.save();
@@ -625,18 +641,14 @@
         ctx.restore();
       }
 
-      // ヘルラッシュ中、掴んだ相手まで舌を伸ばしたまま表示
-      if(this.specialType==='hellRush' && this.luciferGrabTarget){
-        ctx.save();
-        ctx.strokeStyle='#e98282';
-        ctx.lineWidth=8;
-        ctx.lineCap='round';
-        ctx.beginPath();
-        ctx.moveTo(26,4);
-        const tx=(this.luciferGrabTarget.x-this.x)*this.face;
-        const ty=this.luciferGrabTarget.y-this.y;
-        ctx.lineTo(tx,ty);
-        ctx.stroke();
+      if(this.specialType==='ribbonWhip'){
+        ctx.save();ctx.strokeStyle='#f08b9a';ctx.lineWidth=6;ctx.lineCap='round';
+        const phase=performance.now()/70;
+        for(let i=0;i<3;i++){
+          ctx.beginPath();ctx.moveTo(26,4);
+          ctx.quadraticCurveTo(80,Math.sin(phase+i)*45,145+i*18,Math.cos(phase*.8+i)*35);
+          ctx.stroke();
+        }
         ctx.restore();
       }
 
@@ -827,7 +839,9 @@
     lastReleasedTime:0,
     dashUsedThisTouch:false,
     commandHistory:[],
-    luciferTongueReadyUntil:0
+    luciferTongueReadyUntil:0,
+    punchTapTimes:[],
+    tongueTapTimes:[]
   };
 
   function pushCommandDir(dir){
@@ -961,8 +975,10 @@
     guardWaves=[];
     aquaTornadoes=[];
     siltClouds=[];
+    catfishCharges=[];
     aquaTornadoes=[];
     siltClouds=[];
+    catfishCharges=[];
 
     if(practiceExitButton) practiceExitButton.hidden=false;
 
@@ -1060,75 +1076,74 @@
   }
 
 
-  function specialHellRush(f){
-    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+  function specialRibbonWhip(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
+    const other=f.isPlayer?enemy:player;
+    const dir=f.face;
+    f.specialType='ribbonWhip'; f.specialT=.92; f.attack='tongue'; f.attackT=.92;
+    comboEl.textContent='リボンウィップ!';
+    setTimeout(()=>{if(comboEl.textContent==='リボンウィップ!')comboEl.textContent='';},700);
 
+    const ys=[-38,22,-8,42,-25];
+    ys.forEach((oy,i)=>setTimeout(()=>{
+      if(gameOver || !other) return;
+      const dx=(other.x-f.x)*dir, dy=other.y-(f.y+oy);
+      if(dx>0 && dx<f.tongueRange*1.35 && Math.abs(dy)<60){
+        damageHit(f,other,1.35*f.damageMul,(i===4?90:24)*dir,(i===4?-45:0));
+      }
+    },i*115));
+    return true;
+  }
+
+  function specialCatfishCharge(f){
+    if(gameOver || f.stun>0 || f.specialT>0) return false;
+    const other=f.isPlayer?enemy:player;
+    if(!other) return false;
+    f.specialType='catfishCall'; f.specialT=.65; f.attackT=.30;
+    const towardEnemy = other.x>=f.x ? 1 : -1;
+    catfishCharges.push({
+      owner:f,target:other,
+      x:other.x+towardEnemy*210,y:other.y+12,
+      vx:-towardEnemy*430,t:1.15,hit:false
+    });
+    comboEl.textContent='ナマズさん突進!';
+    setTimeout(()=>{if(comboEl.textContent==='ナマズさん突進!')comboEl.textContent='';},800);
+    return true;
+  }
+
+  function specialHellRush(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
     const other=f.isPlayer?enemy:player;
     const dir=f.face;
 
     f.specialType='hellRush';
-    f.specialT=1.55;
-    f.attack='tongue';
-    f.attackT=1.55;
-    f.luciferGrabTarget=null;
-    f.luciferGrabT=0;
+    f.specialT=1.18;
+    f.attack='punch';
+    f.attackT=1.18;
     f.luciferRushHits=0;
+    f.vx += dir*185;
 
-    // 舌を通常より長く前へ。命中したら拘束して引き寄せる。
-    const reach=f.tongueLen*1.28;
-    const dx=other.x-f.x;
-    const dy=other.y-f.y;
-    const inFront=dx*dir>0;
-
-    if(inFront && Math.abs(dx)<reach && Math.abs(dy)<70){
-      f.luciferGrabTarget=other;
-      f.luciferGrabT=.55;
-      other.stun=Math.max(other.stun,.9);
-
-      comboEl.textContent='ヘルラッシュ!';
-      setTimeout(()=>{
-        if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent='';
-      },850);
-
-      // 引き寄せ後、5発。最後は振り下ろし。
-      setTimeout(()=>{
-        if(!f.luciferGrabTarget || gameOver) return;
-        const t=f.luciferGrabTarget;
-        t.x=f.x+dir*62;
-        t.y=f.y-2;
-
-        const hits=[
-          {delay:0,   dmg:2.0, kx:18,  ky:-12, pose:'punch'},
-          {delay:115, dmg:2.0, kx:12,  ky:10,  pose:'punch'},
-          {delay:230, dmg:2.2, kx:20,  ky:-18, pose:'punch'},
-          {delay:345, dmg:2.2, kx:10,  ky:14,  pose:'punch'},
-          {delay:480, dmg:4.2, kx:125, ky:135, pose:'hammer'}
-        ];
-
-        hits.forEach((hit,i)=>{
-          setTimeout(()=>{
-            if(gameOver || !t) return;
-            f.attack='punch';
-            f.attackVariant=hit.pose==='hammer'?'down':'mid';
-            f.attackT=.18;
-            f.luciferRushHits=i+1;
-            damageHit(f,t,hit.dmg*f.damageMul,hit.kx*dir,hit.ky);
-            if(i===4){
-              f.luciferGrabTarget=null;
-              f.luciferGrabT=0;
-            }
-          },hit.delay);
-        });
-      },300);
-
-      return true;
-    }
-
-    // 空振りでも技は成立
     comboEl.textContent='ヘルラッシュ!';
-    setTimeout(()=>{
-      if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent='';
-    },650);
+    setTimeout(()=>{ if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent=''; },800);
+
+    const hits=[
+      {delay:120,dmg:2.0,kx:12,ky:-8,pose:'mid'},
+      {delay:245,dmg:2.0,kx:14,ky:10,pose:'mid'},
+      {delay:370,dmg:2.2,kx:16,ky:-10,pose:'mid'},
+      {delay:495,dmg:2.4,kx:18,ky:12,pose:'mid'},
+      {delay:635,dmg:4.4,kx:75,ky:165,pose:'hammer'}
+    ];
+    hits.forEach((hit,i)=>setTimeout(()=>{
+      if(gameOver || !other) return;
+      const dx=(other.x-f.x)*dir;
+      if(dx>-20 && dx<108 && Math.abs(other.y-f.y)<78){
+        f.attack='punch';
+        f.attackVariant=hit.pose==='hammer'?'down':'mid';
+        f.attackT=.18;
+        f.luciferRushHits=i+1;
+        damageHit(f,other,hit.dmg*f.damageMul,hit.kx*dir,hit.ky);
+      }
+    },hit.delay));
     return true;
   }
 
@@ -1292,23 +1307,29 @@
     return false;
   }
 
+  function registerRapidTap(kind){
+    const now=performance.now();
+    const key=kind==='punch'?'punchTapTimes':'tongueTapTimes';
+    input[key]=(input[key]||[]).filter(t=>now-t<=620);
+    input[key].push(now);
+    if(input[key].length>=3){
+      input[key]=[];
+      return true;
+    }
+    return false;
+  }
+
   function attack(f, kind) {
     if(gameOver || f.guard) return;
 
-    // ルシファーさん：→→＋舌 のあと短時間だけパンチ待ち。
-    if(f.type==='black' && kind==='tongue'){
-      const forward=f.face>0?'right':'left';
-      if(hasCommand([forward,forward],760)){
-        input.luciferTongueReadyUntil=performance.now()+650;
-        clearCommand();
-        // ここでは通常舌も出す。次のパンチでヘルラッシュへ移行。
-      }
+    const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
+
+    if(f.type==='black' && kind==='punch' && rapidTriple){
+      if(specialHellRush(f)) return;
     }
 
-    if(f.type==='black' && kind==='punch' &&
-       performance.now()<input.luciferTongueReadyUntil){
-      input.luciferTongueReadyUntil=0;
-      if(specialHellRush(f)) return;
+    if(f.type==='purple' && kind==='tongue' && rapidTriple){
+      if(specialRibbonWhip(f)) return;
     }
 
     // 通常攻撃より先に必殺技コマンドを判定
@@ -1505,6 +1526,18 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          // リリスさん：後ろ→後ろ→ガードで、敵の背後からナマズさん。
+          if(player.type==='purple' && !player.throwState){
+            const back=player.face>0?'left':'right';
+            if(hasCommand([back,back],780)){
+              clearCommand();
+              if(specialCatfishCharge(player)){
+                btn.classList.remove('pressed');
+                return;
+              }
+            }
+          }
+
           // 舌投げで回転中は通常ガードではなく「壁受け身入力」。
           // 約0.24秒だけ受け身受付を残す。
           if(player.throwState){
@@ -1721,7 +1754,29 @@
       });
       aquaTornadoes=aquaTornadoes.filter(t=>t.t>0);
 
-      siltClouds.forEach(s=>{
+      catfishCharges.forEach(n=>{
+        n.t-=dt; n.x+=n.vx*dt;
+        const target=n.target;
+        if(!n.hit && target && Math.hypot(target.x-n.x,target.y-n.y)<target.radius+52){
+          n.hit=true;
+          damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
+        }
+      });
+      catfishCharges=catfishCharges.filter(n=>n.t>0);
+
+      catfishCharges.forEach(n=>{
+      ctx.save(); ctx.translate(n.x,n.y); if(n.vx<0)ctx.scale(-1,1);
+      ctx.fillStyle='#4b5352'; ctx.beginPath(); ctx.ellipse(0,0,48,24,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#68716f'; ctx.beginPath(); ctx.ellipse(31,-2,22,18,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(38,-7,4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(39,-7,2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#697574'; ctx.lineWidth=2.5; ctx.beginPath();
+      ctx.moveTo(43,2);ctx.quadraticCurveTo(68,-6,78,4);
+      ctx.moveTo(43,5);ctx.quadraticCurveTo(68,14,80,9);ctx.stroke();
+      ctx.restore();
+    });
+
+    siltClouds.forEach(s=>{
         s.t-=dt;
         s.radius+=34*dt;
         s.y-=5*dt;
