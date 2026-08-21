@@ -49,3 +49,15 @@ button{font:inherit;color:inherit}
 @media (orientation:portrait) and (max-width:900px){#portraitOverlay{display:flex}}
 @media (min-width:901px){#desktopStart{display:block}}
 @media (max-width:900px){#desktopStart{display:none}}
+
+.version-badge{
+  margin:-1rem 0 1.2rem;
+  padding:5px 13px;
+  border:2px solid rgba(255,255,255,.55);
+  border-radius:999px;
+  background:rgba(4,65,82,.28);
+  font-size:clamp(11px,1.7vw,16px);
+  font-weight:1000;
+  letter-spacing:.12em;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+}
