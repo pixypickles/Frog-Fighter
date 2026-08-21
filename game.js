@@ -22,6 +22,7 @@
   let aquaTornadoes = [];
   let siltClouds = [];
   let catfishCharges = [];
+  let burstWaves = [];
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -113,6 +114,16 @@
     canvas.style.width = innerWidth + 'px';
     canvas.style.height = innerHeight + 'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function drawRedAura(x,y,rx,ry,intensity=1){
+    ctx.save();ctx.translate(x,y);ctx.globalCompositeOperation='lighter';
+    const pulse=.93+Math.sin(performance.now()/48)*.07;ctx.scale(pulse,pulse);
+    for(let i=0;i<4;i++){
+      ctx.globalAlpha=(.13+i*.055)*intensity;ctx.fillStyle=i%2===0?'#ff2738':'#ff7138';
+      ctx.beginPath();ctx.ellipse(Math.sin(performance.now()/80+i)*4,Math.cos(performance.now()/96+i)*3,rx+i*4,ry+i*3,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawBurningAura(x,y,rx,ry,rotation=0){
@@ -214,6 +225,8 @@
       this.specialT=0;
       this.specialType=null;
       this.specialHitDone=false;
+      this.chargeStartTime=0;
+      this.chargePower=0;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -496,6 +509,18 @@
         ctx.stroke();
       }
 
+      // リリスさん：リボンは目の後ろに差し込む
+      if(this.type==='purple'){
+        ctx.save(); ctx.translate(0,-38);
+        ctx.fillStyle='#ff86c8'; ctx.strokeStyle='#8b2f72'; ctx.lineWidth=2.5;
+        ctx.beginPath();
+        ctx.moveTo(-5,3); ctx.quadraticCurveTo(-31,-14,-33,3); ctx.quadraticCurveTo(-28,18,-6,8); ctx.closePath();
+        ctx.moveTo(5,3); ctx.quadraticCurveTo(31,-14,33,3); ctx.quadraticCurveTo(28,18,6,8); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#ffd0eb'; ctx.beginPath(); ctx.arc(0,4,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+
       // 頭
       ctx.fillStyle=pal.body;
       ctx.beginPath();
@@ -572,28 +597,6 @@
 
       ctx.restore();
 
-      // リリスさん：頭の大きなリボン
-      if(this.type==='purple'){
-        ctx.save();
-        ctx.translate(0,-58);
-        ctx.fillStyle='#ff86c8';
-        ctx.strokeStyle='#8b2f72';
-        ctx.lineWidth=2.5;
-        ctx.beginPath();
-        ctx.moveTo(-3,2);
-        ctx.quadraticCurveTo(-24,-14,-27,3);
-        ctx.quadraticCurveTo(-24,18,-3,7);
-        ctx.closePath();
-        ctx.moveTo(3,2);
-        ctx.quadraticCurveTo(24,-14,27,3);
-        ctx.quadraticCurveTo(24,18,3,7);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        ctx.fillStyle='#ffd0eb';
-        ctx.beginPath(); ctx.arc(0,4,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.restore();
-      }
-
       // ルシファーさん：シンプルな一本傷
       if(this.type==='black'){
         ctx.save();
@@ -616,7 +619,11 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(22,22);
-        if(this.specialType==='aquaTornado'){
+        if(this.specialType==='abyssCharge' || this.specialType==='abyssBurst'){
+          ctx.lineTo(68,7);
+        }else if(this.specialType==='hellCrashFinish'){
+          ctx.lineTo(50,38);
+        }else if(this.specialType==='aquaTornado'){
           ctx.lineTo(48,-34);
         }else if(this.attackVariant==='up'){
           ctx.lineTo(48,-22);
@@ -678,6 +685,15 @@
         ctx.lineTo(48,68);
         ctx.stroke();
         ctx.restore();
+      }
+
+      if(this.type==='black' && (this.specialType==='hellCrashFinish' || this.specialType==='abyssCharge' || this.specialType==='abyssBurst')){
+        let intensity=1;
+        if(this.specialType==='abyssCharge'){
+          const held=Math.max(0,performance.now()-(this.chargeStartTime||performance.now()));
+          intensity=.4+.6*Math.min(1,held/1150);
+        }
+        drawRedAura(58,7,21,17,intensity);
       }
 
       if(this.specialType==='ribbonWhip'){
@@ -928,7 +944,8 @@
     guardTapTimes:[],
     lastBackInputTime:0,
     purpleGuardCount:0,
-    purpleGuardLastTime:0
+    purpleGuardLastTime:0,
+    forwardTapTimes:[]
   };
 
   function pushCommandDir(dir){
@@ -1073,9 +1090,11 @@
     aquaTornadoes=[];
     siltClouds=[];
     catfishCharges=[];
+    burstWaves=[];
     aquaTornadoes=[];
     siltClouds=[];
     catfishCharges=[];
+    burstWaves=[];
 
     if(practiceExitButton) practiceExitButton.hidden=false;
 
@@ -1237,63 +1256,52 @@
     return true;
   }
 
-  function specialHellRush(f){
+  function specialHellCrash(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
-    const other=f.isPlayer?enemy:player;
+    const other=f.isPlayer?enemy:player; if(!other) return false;
     const dir=f.face;
-
-    f.attackT=0;
-    f.specialType='hellRush';
-    f.specialT=1.18;
-    f.attack='punch';
-    f.attackT=1.18;
-    f.luciferRushHits=0;
-    f.vx += dir*185;
-
-    comboEl.textContent='ヘルラッシュ!';
-    setTimeout(()=>{ if(comboEl.textContent==='ヘルラッシュ!') comboEl.textContent=''; },800);
-
-    const hits=[
-      {delay:120,dmg:2.0,kx:12,ky:-8,pose:'mid'},
-      {delay:245,dmg:2.0,kx:14,ky:10,pose:'mid'},
-      {delay:370,dmg:2.2,kx:16,ky:-10,pose:'mid'},
-      {delay:495,dmg:2.4,kx:18,ky:12,pose:'mid'},
-      {delay:635,dmg:4.4,kx:75,ky:165,pose:'hammer'}
-    ];
-    hits.forEach((hit,i)=>setTimeout(()=>{
-      if(gameOver || !other) return;
-      const dx=(other.x-f.x)*dir;
-      if(dx>-20 && dx<108 && Math.abs(other.y-f.y)<78){
-        f.attack='punch';
-        f.attackVariant=hit.pose==='hammer'?'down':'mid';
-        f.attackT=.18;
-        f.luciferRushHits=i+1;
-        damageHit(f,other,hit.dmg*f.damageMul,hit.kx*dir,hit.ky);
+    f.specialType='hellCrash'; f.specialT=1.35; f.attack='punch'; f.attackT=1.35; f.specialHitDone=false;
+    comboEl.textContent='ヘルクラッシュ!'; setTimeout(()=>{if(comboEl.textContent==='ヘルクラッシュ!')comboEl.textContent='';},900);
+    f.vx += dir*340;
+    const started=performance.now();
+    const timer=setInterval(()=>{
+      if(gameOver || !f || !other || (f.specialType!=='hellCrash' && f.specialType!=='hellCrashFinish')){clearInterval(timer);return;}
+      if(f.specialType==='hellCrashFinish'){clearInterval(timer);return;}
+      const dx=(other.x-f.x)*dir, dy=Math.abs(other.y-f.y);
+      if(dx>-15 && dx<82 && dy<72){
+        other.stun=Math.max(other.stun,.12); other.vx=dir*245; other.vy*=.4; f.vx=dir*235;
+        const hitWall=dir>0?other.x>=innerWidth-58:other.x<=58;
+        if(hitWall){
+          f.specialType='hellCrashFinish'; f.specialT=.48; f.attack='punch'; f.attackVariant='down'; f.attackT=.48;
+          f.vx*=.08; other.vx*=.05;
+          setTimeout(()=>{if(gameOver)return;other.hurtFace='both';other.hurtFaceT=.55;damageHit(f,other,11.5*f.damageMul,45*dir,265);},145);
+        }
       }
-    },hit.delay));
+      if(performance.now()-started>1000)clearInterval(timer);
+    },24);
     return true;
   }
 
-  function specialDarknessRush(f){
-    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+  function startAbyssCharge(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
+    f.specialType='abyssCharge'; f.specialT=20; f.attack='punch'; f.attackT=20;
+    f.chargeStartTime=performance.now(); f.chargePower=.2; f.vx*=.25; f.vy*=.25;
+    comboEl.textContent='CHARGE...'; return true;
+  }
 
-    f.specialType='darknessRush';
-    f.specialT=.92;
-    f.specialHitDone=false;
-    f.luciferDiveHits=0;
-    f.attack='kick';
-    f.attackVariant='down';
-    f.attackT=.92;
-
-    // 斜め前下へ連続キックで下降。
-    f.vx += f.face*250;
-    f.vy += 185;
-
-    comboEl.textContent='ダークネスラッシュ!';
+  function releaseAbyssCharge(f){
+    if(!f || f.specialType!=='abyssCharge') return false;
+    const held=Math.max(0,performance.now()-(f.chargeStartTime||performance.now()));
+    const power=Math.max(.25,Math.min(1,held/1150));
+    f.specialType='abyssBurst'; f.specialT=.5; f.attack='punch'; f.attackVariant='mid'; f.attackT=.5; f.chargePower=power;
+    comboEl.textContent='アビスチャージ!';setTimeout(()=>{if(comboEl.textContent==='アビスチャージ!')comboEl.textContent='';},720);
     setTimeout(()=>{
-      if(comboEl.textContent==='ダークネスラッシュ!') comboEl.textContent='';
-    },700);
-
+      if(gameOver)return; const other=f.isPlayer?enemy:player; if(!other)return;
+      const hx=f.x+f.face*67, hy=f.y+7, dist=Math.hypot(other.x-hx,other.y-hy);
+      if(dist<other.radius+34) damageHit(f,other,(7.5+7.5*power)*f.damageMul,190*f.face,-42);
+      else if(dist<155) damageHit(f,other,(1.1+1.9*power)*f.damageMul,85*f.face,-16);
+      burstWaves.push({x:hx,y:hy,t:.44,life:.44,radius:18,max:150,power});
+    },110);
     return true;
   }
 
@@ -1408,6 +1416,13 @@
     return false;
   }
 
+  function hasForwardForwardTap(f, windowMs=780){
+    const now=performance.now();
+    const taps=(input.forwardTapTimes||[]).filter(t=>now-t<=windowMs);
+    input.forwardTapTimes=taps;
+    return taps.length>=2;
+  }
+
   function trySpecial(f,kind){
     if(!f) return false;
 
@@ -1443,10 +1458,9 @@
     }
 
     if(f.type==='black'){
-      const forward=f.face>0?'right':'left';
-      if(kind==='kick' && hasCommand([forward,'down'],760)){
-        clearCommand();
-        return specialDarknessRush(f);
+      if(kind==='punch' && hasForwardForwardTap(f,780)){
+        input.forwardTapTimes=[]; clearCommand(); f.attackT=0; f.attack=null;
+        return specialHellCrash(f);
       }
     }
 
@@ -1469,13 +1483,6 @@
     if(gameOver || f.guard) return;
 
     const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
-
-    if(f.type==='black' && kind==='punch' && rapidTriple){
-      // 1・2発目の通常パンチ硬直を3発目でキャンセルして必殺技へ。
-      f.attackT=0;
-      f.attack=null;
-      if(specialHellRush(f)) return;
-    }
 
     if(f.type==='purple' && kind==='tongue' && rapidTriple){
       // 1・2回目の通常舌硬直を3回目でキャンセル。
@@ -1661,6 +1668,16 @@
   },{passive:false});
   zone.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===stickId)stickMove(t);e.preventDefault()},{passive:false});
   function clearStick(){
+    if(player && input.currentDir){
+      const forward=player.face>0?'right':'left';
+      const forwardUp=player.face>0?'upRight':'upLeft';
+      const forwardDown=player.face>0?'downRight':'downLeft';
+      if(input.currentDir===forward || input.currentDir===forwardUp || input.currentDir===forwardDown){
+        const now=performance.now();
+        input.forwardTapTimes=(input.forwardTapTimes||[]).filter(t=>now-t<=800);
+        input.forwardTapTimes.push(now);
+      }
+    }
     if(input.currentDir && !input.dashUsedThisTouch){
       input.lastReleasedDir=input.currentDir;
       input.lastReleasedTime=performance.now();
@@ -1741,9 +1758,23 @@
           }
         }
       }
+      else if(action==='punch' && player && player.type==='black'){
+        const backHeld=(player.face>0 && input.x<-.35) || (player.face<0 && input.x>.35);
+        if(backHeld && !player.throwState){
+          player.attackT=0; player.attack=null;
+          if(startAbyssCharge(player)){btn.dataset.charging='1';return;}
+        }
+        attack(player,action);
+      }
       else if(player) attack(player,action);
     };
-    const up=e=>{e.preventDefault();btn.classList.remove('pressed');if(action==='guard'&&player)player.guard=false};
+    const up=e=>{
+      e.preventDefault(); btn.classList.remove('pressed');
+      if(action==='punch' && player && btn.dataset.charging==='1'){
+        btn.dataset.charging=''; releaseAbyssCharge(player);
+      }
+      if(action==='guard'&&player) player.guard=false;
+    };
     btn.addEventListener('touchstart',down,{passive:false});btn.addEventListener('touchend',up,{passive:false});btn.addEventListener('touchcancel',up,{passive:false});
     btn.addEventListener('mousedown',down);btn.addEventListener('mouseup',up);btn.addEventListener('mouseleave',up);
   });
@@ -1943,6 +1974,9 @@
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
 
+      burstWaves.forEach(b=>{b.t-=dt;});
+      burstWaves=burstWaves.filter(b=>b.t>0);
+
     siltClouds.forEach(s=>{
         s.t-=dt;
         s.radius+=34*dt;
@@ -1977,6 +2011,16 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    burstWaves.forEach(b=>{
+      const a=Math.max(0,b.t/b.life);
+      const progress=1-a;
+      const rr=b.radius+(b.max-b.radius)*progress;
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.58*a;ctx.strokeStyle='#ff3447';ctx.lineWidth=8;ctx.beginPath();ctx.arc(b.x,b.y,rr,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=.22*a;ctx.strokeStyle='#ff9a59';ctx.lineWidth=18;ctx.beginPath();ctx.arc(b.x,b.y,rr*.72,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    });
 
     // ナマズさん：リリスさんの後ろから突進する、細長いナマズ
     catfishCharges.forEach(n=>{
