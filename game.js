@@ -1535,12 +1535,13 @@
 
   function spawnLeafTarget(){
     leafTargets.push({
-      x:innerWidth+45,
-      y:80+Math.random()*Math.max(100,innerHeight-170),
-      vx:-(115+Math.random()*130),
-      r:16+Math.random()*11,
+      x:innerWidth+40+Math.random()*90,
+      y:85+Math.random()*Math.max(120,innerHeight-175),
+      vx:-(125+Math.random()*95),
+      r:16+Math.random()*9,
       rot:Math.random()*Math.PI*2,
-      spin:(Math.random()-.5)*2.4,
+      spin:(Math.random()-.5)*1.8,
+      hp:1,
       hit:false
     });
   }
@@ -1584,7 +1585,7 @@
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
-    for(let i=0;i<4;i++) spawnLeafTarget();
+    for(let i=0;i<7;i++) spawnLeafTarget();
 
     running=true;
     last=performance.now();
@@ -1601,8 +1602,7 @@
   function checkLeafHits(){
     if(!leafMiniActive || !player) return;
 
-    // 攻撃が出ている間、キャラ前方に簡易攻撃判定。
-    // 必殺技でも通常技でも葉っぱを壊せる。
+    // 何か攻撃を出している間、前方の葉っぱは1発で壊れる。
     const attacking =
       player.attackT>0 ||
       player.specialT>0 ||
@@ -1617,20 +1617,25 @@
 
     leafTargets.forEach(leaf=>{
       if(leaf.hit) return;
+
       const dx=(leaf.x-player.x)*player.face;
       const dy=Math.abs(leaf.y-player.y);
 
       if(dx>-35 && dx<rx && dy<ry){
+        // 耐久1。パンチ1発程度の接触で即破壊。
+        leaf.hp=0;
         leaf.hit=true;
         leafMiniScore++;
+
         if(leafMiniScoreEl) leafMiniScoreEl.textContent=String(leafMiniScore);
 
-        for(let i=0;i<6;i++){
+        for(let i=0;i<7;i++){
           particles.push({
-            x:leaf.x,y:leaf.y,
-            vx:(Math.random()-.5)*160,
-            vy:(Math.random()-.5)*120,
-            t:.42+Math.random()*.22,
+            x:leaf.x,
+            y:leaf.y,
+            vx:(Math.random()-.5)*170,
+            vy:(Math.random()-.5)*130,
+            t:.42+Math.random()*.24,
             r:2+Math.random()*4,
             type:'guard'
           });
@@ -1643,7 +1648,7 @@
     guardTargets.push({
       x:innerWidth+55,
       y:90+Math.random()*Math.max(120,innerHeight-190),
-      vx:-(190+Math.random()*115),
+      vx:-(175+Math.random()*95),
       r:12+Math.random()*5,
       phase:Math.random()*Math.PI*2,
       kind:Math.random()<.72?'fish':'bug',
@@ -1669,6 +1674,12 @@
     if(practiceLabel) practiceLabel.style.display='none';
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; siltClouds=[];
     catfishCharges=[]; pressureBlades=[]; burstWaves=[];
+
+    // 開始直後から見えるよう、最初に3体出しておく
+    spawnGuardTarget();
+    spawnGuardTarget();
+    spawnGuardTarget();
+
     running=true; last=performance.now(); updateHud();
   }
 
@@ -2906,36 +2917,15 @@
       player.update(dt);enemy.update(dt);
 
       // ラファエルさんの水圧カッター更新
-      if(guardMiniActive){
-      guardTargets.forEach(t=>{
-        ctx.save(); ctx.translate(t.x,t.y);
-        if(t.kind==='fish'){
-          ctx.fillStyle='#8fd5cf'; ctx.beginPath();
-          ctx.ellipse(0,0,t.r*1.25,t.r*.65,0,0,Math.PI*2); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(t.r,0); ctx.lineTo(t.r*2,-t.r*.75);
-          ctx.lineTo(t.r*2,t.r*.75); ctx.closePath(); ctx.fill();
-          ctx.fillStyle='#17282c';ctx.beginPath();ctx.arc(-t.r*.55,-2,2,0,Math.PI*2);ctx.fill();
-        }else{
-          ctx.fillStyle='#b8d56f';ctx.beginPath();ctx.ellipse(0,0,t.r*.8,t.r*.48,0,0,Math.PI*2);ctx.fill();
-          ctx.strokeStyle='#dff0a8';ctx.lineWidth=2;ctx.beginPath();
-          ctx.moveTo(-t.r*.3,-3);ctx.lineTo(-t.r*1.25,-t.r*.9);
-          ctx.moveTo(-t.r*.3,3);ctx.lineTo(-t.r*1.25,t.r*.9);
-          ctx.moveTo(t.r*.3,-3);ctx.lineTo(t.r*1.2,-t.r*.9);
-          ctx.moveTo(t.r*.3,3);ctx.lineTo(t.r*1.2,t.r*.9);ctx.stroke();
-        }
-        ctx.restore();
-      });
-    }
-
-    if(leafMiniActive){
+      if(leafMiniActive){
         leafMiniTime-=dt;
         leafSpawnTimer-=dt;
 
         if(leafMiniTimeEl) leafMiniTimeEl.textContent=Math.max(0,leafMiniTime).toFixed(1);
 
-        if(leafSpawnTimer<=0 && leafTargets.length<12){
+        if(leafSpawnTimer<=0 && leafTargets.length<18){
           spawnLeafTarget();
-          leafSpawnTimer=.38+Math.random()*.30;
+          leafSpawnTimer=.22+Math.random()*.22;
         }
 
         leafTargets.forEach(leaf=>{
@@ -3124,6 +3114,57 @@
 
     drawBackground(dt);
     player.draw();enemy.draw();
+
+    // JUST GUARD ミニゲームの小魚/水生昆虫は、背景とキャラ描画の後に必ず描く。
+    if(guardMiniActive){
+      guardTargets.forEach(t=>{
+        ctx.save();
+        ctx.translate(t.x,t.y);
+
+        if(t.kind==='fish'){
+          // 小魚
+          ctx.fillStyle='#8fd5cf';
+          ctx.beginPath();
+          ctx.ellipse(0,0,t.r*1.35,t.r*.72,0,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.fillStyle='#6cb5b0';
+          ctx.beginPath();
+          ctx.moveTo(t.r*.95,0);
+          ctx.lineTo(t.r*2.15,-t.r*.8);
+          ctx.lineTo(t.r*2.15,t.r*.8);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle='#ffffff';
+          ctx.beginPath();
+          ctx.arc(-t.r*.45,-3,3,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.fillStyle='#17282c';
+          ctx.beginPath();
+          ctx.arc(-t.r*.45,-3,1.5,0,Math.PI*2);
+          ctx.fill();
+        }else{
+          // 水生昆虫
+          ctx.fillStyle='#b8d56f';
+          ctx.beginPath();
+          ctx.ellipse(0,0,t.r*.85,t.r*.52,0,0,Math.PI*2);
+          ctx.fill();
+
+          ctx.strokeStyle='#e3f2ad';
+          ctx.lineWidth=2.5;
+          ctx.beginPath();
+          ctx.moveTo(-t.r*.3,-2); ctx.lineTo(-t.r*1.35,-t.r*.9);
+          ctx.moveTo(-t.r*.3, 2); ctx.lineTo(-t.r*1.35, t.r*.9);
+          ctx.moveTo( t.r*.3,-2); ctx.lineTo( t.r*1.3,-t.r*.9);
+          ctx.moveTo( t.r*.3, 2); ctx.lineTo( t.r*1.3, t.r*.9);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+    }
 
     // ラファエルさん：控えめな三日月型の水圧カッター
     // 描画順だけは修正版のまま。見た目は最初の予定に近くする。
