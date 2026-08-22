@@ -4444,6 +4444,9 @@ function drawBackground(dt){
       const a=Math.max(0,w.t/w.life);
       ctx.save();
       ctx.translate(w.x,w.y);
+      // 衝撃波の進行方向に合わせて左右反転。
+      // 右向き時は従来の形、左向き時は鏡映し。
+      if(w.vx<0) ctx.scale(-1,1);
       ctx.globalCompositeOperation='lighter';
       ctx.globalAlpha=.55*a;
       ctx.strokeStyle='#d9ff8a';
