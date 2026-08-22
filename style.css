@@ -1173,3 +1173,107 @@ button{font:inherit;color:inherit}
   border-radius:0 0 65% 65% !important;
   box-shadow:0 3px 0 -1px #ff7fb4 !important;
 }
+
+/* v6.36 魚・ザリガニの選択アイコンを絵文字からゲーム本体と同系統のフラット絵へ */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji,
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  position:absolute !important;
+  left:16px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  width:86px !important;
+  height:68px !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  overflow:visible !important;
+  background:none !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+/* リヴァイアさん：赤＋緑のピラニア。丸く単純な形でカエル顔と質感を統一 */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji{
+  width:72px !important;
+  height:46px !important;
+  left:20px !important;
+  border-radius:55% 44% 48% 52% !important;
+  background:
+    radial-gradient(circle at 28% 35%, #fff 0 7%, #17251d 8% 12%, transparent 13%),
+    linear-gradient(to bottom, #39c94c 0 48%, #e9433f 49% 100%) !important;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.09),0 3px 5px rgba(0,0,0,.14) !important;
+}
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji::before{
+  content:"" !important;
+  position:absolute !important;
+  right:-22px !important;
+  top:9px !important;
+  width:0 !important;
+  height:0 !important;
+  border-top:14px solid transparent !important;
+  border-bottom:14px solid transparent !important;
+  border-left:24px solid #e9433f !important;
+  background:none !important;
+  transform:none !important;
+}
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji::after{
+  content:"" !important;
+  position:absolute !important;
+  left:3px !important;
+  top:25px !important;
+  width:25px !important;
+  height:10px !important;
+  border:0 !important;
+  border-bottom:4px solid #641d24 !important;
+  border-radius:0 0 60% 60% !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+
+/* アスモデウスさん：赤橙のザリガニ。絵文字の写実的な陰影を廃止 */
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  width:58px !important;
+  height:35px !important;
+  left:27px !important;
+  border-radius:48% 55% 48% 45% !important;
+  background:
+    radial-gradient(circle at 72% 28%, #fff 0 5%, #241a16 6% 9%, transparent 10%),
+    #e95335 !important;
+  box-shadow:
+    -18px 15px 0 -12px #d9472f,
+    -4px 20px 0 -13px #d9472f,
+    12px 20px 0 -13px #d9472f,
+    inset 0 -4px 0 rgba(0,0,0,.10),
+    0 3px 5px rgba(0,0,0,.14) !important;
+}
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji::before{
+  content:"" !important;
+  position:absolute !important;
+  left:-31px !important;
+  top:-4px !important;
+  width:26px !important;
+  height:26px !important;
+  border:8px solid #e95335 !important;
+  border-right-width:5px !important;
+  border-radius:55% 45% 60% 40% !important;
+  background:transparent !important;
+  box-shadow:65px 1px 0 -7px #e95335 !important;
+  transform:rotate(-18deg) !important;
+}
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji::after{
+  content:"" !important;
+  position:absolute !important;
+  right:-25px !important;
+  top:8px !important;
+  width:28px !important;
+  height:19px !important;
+  border:0 !important;
+  border-radius:45% !important;
+  background:#d9472f !important;
+  box-shadow:9px 3px 0 -3px #c83b2a,16px 6px 0 -5px #b93427 !important;
+  transform:rotate(10deg) !important;
+}
+
+@media (max-width:760px){
+  #selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji{left:12px !important;}
+  #selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{left:18px !important;}
+}
