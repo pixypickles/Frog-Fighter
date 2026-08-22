@@ -15,7 +15,7 @@
       <h1>カエルファイター</h1>
       <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
       <p class="rotate-note">スマホを横持ちしてください</p>
-      <div class="start-version">VERSION 6.24</div>
+      <div class="start-version">VERSION 6.25</div>
       <button id="desktopStart" class="soft-btn">PCで試す</button>
     </section>
 
@@ -116,10 +116,22 @@
         </div>
       </div>
 
+      <div class="difficulty-panel">
+        <span class="difficulty-label">難易度</span>
+        <div class="difficulty-buttons">
+          <button type="button" class="difficulty-btn" data-difficulty="easy">イージー</button>
+          <button type="button" class="difficulty-btn selected" data-difficulty="normal">ノーマル</button>
+          <button type="button" class="difficulty-btn" data-difficulty="hard">ハード</button>
+        </div>
+      </div>
+
       <div class="mode-menu">
         <button id="fightButton" class="primary-btn">フリー対戦</button>
         <button id="storyButton" class="primary-btn story-btn">ストーリー</button>
-        <button id="practiceBtn" class="practice-btn">操作練習</button>
+        <div class="practice-entry-wrap">
+          <button id="practiceBtn" class="practice-btn">操作練習</button>
+          <span class="practice-beginner-badge">初めての方はココ</span>
+        </div>
         <button id="minigameBtn" class="practice-btn">ミニゲーム①：葉っぱ割り</button>
       <button id="justGuardMiniBtn" class="practice-btn">ミニゲーム②：ジャストガード</button>
       <button id="raceMiniBtn" class="practice-btn">ミニゲーム③：水中レース</button>
@@ -207,7 +219,7 @@
     <div id="portraitOverlay">
       <div class="portrait-frog">🐸</div>
       <strong>スマホを横持ちしてください</strong>
-      <span class="portrait-version">VERSION 6.24</span>
+      <span class="portrait-version">VERSION 6.25</span>
     </div>
   </div>
   <script src="game.js"></script>

@@ -506,3 +506,51 @@ button{font:inherit;color:inherit}
   white-space:pre-line;font-size:clamp(17px,2.2vw,27px);
   line-height:1.75;font-weight:700;margin-bottom:18px;
 }
+
+.difficulty-panel{
+  width:min(590px,88vw);
+  margin:10px auto 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.difficulty-label{
+  color:#fff;
+  font-weight:900;
+  font-size:clamp(14px,2vw,20px);
+  text-shadow:0 2px 2px rgba(0,0,0,.25);
+}
+.difficulty-buttons{display:flex;gap:8px}
+.difficulty-btn{
+  border:2px solid rgba(255,255,255,.65);
+  border-radius:18px;
+  padding:8px 14px;
+  background:rgba(0,85,105,.36);
+  color:#fff;
+  font-weight:900;
+  font-size:clamp(12px,1.7vw,17px);
+}
+.difficulty-btn.selected{
+  background:linear-gradient(180deg,#ffd85d,#ffb72b);
+  color:#4a3300;
+  border-color:#fff3b8;
+}
+.practice-entry-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+}
+.practice-entry-wrap .practice-btn{margin:0}
+.practice-beginner-badge{
+  padding:6px 10px;
+  border-radius:14px;
+  background:#fff5a5;
+  color:#314126;
+  font-weight:1000;
+  font-size:clamp(10px,1.4vw,14px);
+  white-space:nowrap;
+  box-shadow:0 2px 0 rgba(0,0,0,.15);
+}

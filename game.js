@@ -38,9 +38,15 @@
   const basketTimeEl=document.getElementById('basketTime');
   const opponentSelect=document.getElementById('opponentSelect');
   const storyHud=document.getElementById('storyHud');
+  const difficultyButtons=[...document.querySelectorAll('.difficulty-btn')];
 
   let selectedFighter = 'green';
   let selectedOpponent = 'blue';
+  let difficulty='normal';
+  try{
+    const savedDifficulty=localStorage.getItem('kaeru_difficulty');
+    if(['easy','normal','hard'].includes(savedDifficulty)) difficulty=savedDifficulty;
+  }catch(e){}
   let stageTheme=0;
   let storyQueue=[];
   let storyFightIndex=0;
@@ -115,6 +121,30 @@
 
   document.getElementById('desktopStart').onclick = () => show('select');
   if (canUseLandscape() && window.innerWidth < 900) show('select');
+
+  function refreshDifficultyButtons(){
+    difficultyButtons.forEach(btn=>{
+      btn.classList.toggle('selected',btn.dataset.difficulty===difficulty);
+    });
+  }
+
+  difficultyButtons.forEach(btn=>{
+    const choose=(e)=>{
+      if(e){e.preventDefault();e.stopPropagation();}
+      difficulty=btn.dataset.difficulty||'normal';
+      try{localStorage.setItem('kaeru_difficulty',difficulty);}catch(err){}
+      refreshDifficultyButtons();
+    };
+    btn.addEventListener('pointerup',choose);
+    btn.addEventListener('click',e=>{if(window.PointerEvent)return;choose(e);});
+  });
+  refreshDifficultyButtons();
+
+  function difficultyProfile(){
+    if(difficulty==='easy') return {move:.82,attack:.58,tongue:.55,guard:.55,special:.55,damage:.80};
+    if(difficulty==='hard') return {move:1.14,attack:1.42,tongue:1.35,guard:1.45,special:1.5,damage:1.14};
+    return {move:1,attack:1,tongue:1,guard:1,special:1,damage:1};
+  }
 
   function isBeelzebubUnlocked(){
     try{return localStorage.getItem('kaeru_beelzebub_unlocked')==='1';}
@@ -3812,6 +3842,9 @@
   }
 
   function damageHit(attacker,target,dmg,kx,ky,bypassCounter=false){
+    if(attacker && !attacker.isPlayer && target && target.isPlayer){
+      dmg*=difficultyProfile().damage;
+    }
     // アスモデウスさんのクロー・カウンター：
     // 近距離打撃だけ無効化。飛び道具は普通に受ける。
     if(target && target.type==='crayfish' && target.crayfishCounterReady && attacker){
@@ -4171,12 +4204,13 @@
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key==='i'&&player)player.guard=false});
 
   function enemyAI(dt){
+    const diff=difficultyProfile();
     if(gameMode==='practice' || gameMode==='raceMini' || gameMode==='basketMini') return;
     if(gameOver)return;
 
     // CPUも舌で引かれている時は、たまに投げ抜けを狙う。
     if(player && player.tonguePullTarget===enemy && player.tonguePullTimer>0){
-      if(Math.random()<dt*3.2) attack(enemy,'tongue');
+      if(Math.random()<dt*3.2*diff.tongue) attack(enemy,'tongue');
       return;
     }
 
@@ -4190,14 +4224,14 @@
         if(roll<dt*.52){ specialAbyssShock(enemy); return; }
       }
 
-      if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*dt; }
-      else if(Math.random()<dt*.8) attack(enemy,Math.random()<.62?'punch':'kick');
-      if(enemy.tonguePullTarget && enemy.tonguePullTimer>0 && Math.random()<dt*2.2){
+      if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*diff.move*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*diff.move*dt; }
+      else if(Math.random()<dt*.8*diff.attack) attack(enemy,Math.random()<.62?'punch':'kick');
+      if(enemy.tonguePullTarget && enemy.tonguePullTimer>0 && Math.random()<dt*2.2*diff.attack){
         attack(enemy,'tongue');
-      } else if(dist>120&&dist<enemy.tongueRange&&Math.random()<dt*.28) {
+      } else if(dist>120&&dist<enemy.tongueRange&&Math.random()<dt*.28*diff.tongue) {
         attack(enemy,'tongue');
       }
-      enemy.guard = dist<90 && Math.random()<dt*.25;
+      enemy.guard = dist<90 && Math.random()<dt*.25*diff.guard;
     }
   }
 
