@@ -11,6 +11,8 @@
   const comboEl = document.getElementById('comboText');
   const restartButton = document.getElementById('restartButton');
   const titleReturnButton=document.getElementById('titleReturnButton');
+  const beelzebubCard=document.getElementById('beelzebubCard');
+  const beelzebubOpponent=document.getElementById('beelzebubOpponent');
   const practiceHelp=document.getElementById('practiceHelp');
   const practiceSpecialTitle=document.getElementById('practiceSpecialTitle');
   const practiceSpecialMoves=document.getElementById('practiceSpecialMoves');
@@ -41,6 +43,9 @@
   let guardWaves = [];
   let aquaTornadoes = [];
   let aquaVortices = [];
+  let toxicWaters=[];
+  let bossFish=[];
+  let abyssShocks=[];
   let siltClouds = [];
   let catfishCharges = [];
   let pressureBlades = [];
@@ -67,7 +72,7 @@
     orange:  { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 },
     piranha: { speed: 198, tongue: 0,   damage: 1.08, defense:0.90, sink:3, hue:0, scale:0.95 },
     crayfish:{ speed: 138, tongue: 0,   damage: 1.18, defense:1.20, sink:10,hue:0, scale:1.08 },
-    beelzebub:{speed: 158, tongue: 275, damage: 1.28, defense:1.22, sink:8, hue:0, scale:1.13}
+    beelzebub:{speed: 158, tongue: 415, damage: 1.28, defense:1.22, sink:8, hue:0, scale:1.13}
   };
 
   function show(name) {
@@ -91,6 +96,24 @@
 
   document.getElementById('desktopStart').onclick = () => show('select');
   if (canUseLandscape() && window.innerWidth < 900) show('select');
+
+  function isBeelzebubUnlocked(){
+    try{return localStorage.getItem('kaeru_beelzebub_unlocked')==='1';}
+    catch(e){return false;}
+  }
+
+  function refreshBossUnlock(){
+    const unlocked=isBeelzebubUnlocked();
+    if(beelzebubCard) beelzebubCard.hidden=!unlocked;
+    if(beelzebubOpponent) beelzebubOpponent.hidden=!unlocked;
+  }
+
+  function unlockBeelzebub(){
+    try{localStorage.setItem('kaeru_beelzebub_unlocked','1');}catch(e){}
+    refreshBossUnlock();
+  }
+
+  refreshBossUnlock();
 
   document.querySelectorAll('.fighter-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -295,8 +318,11 @@
     }
     if(type==='beelzebub'){
       return {
-        body:'#24162e', limb:'#24162e', light:'#5e356d',
-        belly:'#624772', eyeBump:'#40264b'
+        body:'#111714',
+        limb:'#141b16',
+        light:'#7dff28',
+        belly:'#b5ff48',
+        eyeBump:'#6eff20'
       };
     }
     if(type==='yellow'){
@@ -381,6 +407,8 @@
       this.crayfishSmashQueueT=0;
       this.crayfishCounterReady=false;
       this.crayfishCounterT=0;
+      this.bossTongueAimY=0;
+      this.bossSpecialCooldown=0;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -408,6 +436,7 @@
         if(this.counterT<=0) this.counterReady=false;
       }
       if(this.tackleArmedT>0) this.tackleArmedT-=dt;
+      if(this.bossSpecialCooldown>0) this.bossSpecialCooldown=Math.max(0,this.bossSpecialCooldown-dt);
       if(this.urielAuraT>0) this.urielAuraT=Math.max(0,this.urielAuraT-dt);
       if (this.flash>0) this.flash-=dt;
       if (this.hurtFaceT>0) this.hurtFaceT-=dt;
@@ -1297,6 +1326,26 @@
         ctx.restore();
       }
 
+      if(this.type==='beelzebub'){
+        // 黒い身体に蛍光グリーンの目・輪郭が浮くラスボス演出
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.fillStyle='#9aff32';
+        ctx.shadowColor='#78ff18';
+        ctx.shadowBlur=12;
+        ctx.beginPath();
+        ctx.arc(-15,-27,5.5,0,Math.PI*2);
+        ctx.arc(15,-27,5.5,0,Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha=.22;
+        ctx.strokeStyle='#84ff25';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.ellipse(0,18,43,56,0,0,Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // ラファエルさん：回復中は小さな泡が身体の周囲を上昇
       if(this.type==='yellow' && this.healT>0){
         ctx.save();
@@ -1426,7 +1475,12 @@
         ctx.beginPath();
         // 舌だけは口の中央から出す
         ctx.moveTo(0,8);
-        ctx.lineTo(len,8);
+        if(this.type==='beelzebub'){
+          const ty=Math.max(-62,Math.min(62,(target.y-this.y)*.42));
+          ctx.lineTo(len,8+ty);
+        }else{
+          ctx.lineTo(len,8);
+        }
         ctx.stroke();
       }
 
@@ -1964,7 +2018,10 @@
         '↓ ＋ ガード×2：クロー・カウンター'
       ],
       beelzebub:[
-        'BOSS専用技：準備中'
+        '舌：通常の約1.5倍リーチ＋軽い上下追尾',
+        '方向キー1回転 ＋ ガード：ヴェノム・ウォーター',
+        '後ろ → 下 → 前 ＋ パンチ：フィッシュ・レイド',
+        '後ろ → 下 → 前 ＋ キック：アビスショック'
       ]
     };
     return map[type] || ['専用必殺技：準備中'];
@@ -2001,7 +2058,7 @@
   function resetBattleEffects(){
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
-    leafTargets=[]; guardTargets=[];
+    leafTargets=[]; guardTargets=[]; toxicWaters=[]; bossFish=[]; abyssShocks=[];
   }
 
   function startGame(mode='free', enemyType=null) {
@@ -2065,7 +2122,7 @@
     guardTargets=[];
 
     storyQueue=playableTypes.filter(t=>t!==selectedFighter);
-    storyQueue.push('beelzebub');
+    if(selectedFighter!=='beelzebub') storyQueue.push('beelzebub');
     storyFightIndex=0;
     storyLosses=0;
     storyWins=0;
@@ -2582,6 +2639,90 @@
   }
 
 
+  function specialVenomWater(f){
+    if(gameOver || !f || f.stun>0 || f.specialT>0 || f.bossSpecialCooldown>0) return false;
+    f.guard=false;
+    f.specialType='venomWater';
+    f.specialT=.68;
+    f.bossSpecialCooldown=2.4;
+
+    toxicWaters.push({
+      owner:f,
+      t:5.4,
+      life:5.4,
+      tick:0
+    });
+
+    comboEl.textContent='ヴェノム・ウォーター!';
+    setTimeout(()=>{if(comboEl.textContent==='ヴェノム・ウォーター!')comboEl.textContent='';},800);
+    clearCommand();
+    return true;
+  }
+
+  function specialFishRaid(f){
+    if(gameOver || !f || f.stun>0 || f.specialT>0 || f.bossSpecialCooldown>0) return false;
+    const target=f.isPlayer?enemy:player;
+    if(!target) return false;
+
+    f.specialType='fishRaid';
+    f.specialT=.55;
+    f.attack='punch';
+    f.attackT=.55;
+    f.bossSpecialCooldown=2.0;
+
+    const count=10+Math.floor(Math.random()*11);
+    for(let i=0;i<count;i++){
+      const side=(i%2===0)?1:-1;
+      bossFish.push({
+        owner:f,
+        target,
+        x:side>0?innerWidth+30+Math.random()*130:-30-Math.random()*130,
+        y:70+Math.random()*Math.max(120,innerHeight-150),
+        vx:0,vy:0,
+        r:10+Math.random()*4,
+        hp:1,
+        t:4.4,
+        phase:Math.random()*Math.PI*2
+      });
+    }
+
+    comboEl.textContent='フィッシュ・レイド!';
+    setTimeout(()=>{if(comboEl.textContent==='フィッシュ・レイド!')comboEl.textContent='';},800);
+    clearCommand();
+    return true;
+  }
+
+  function specialAbyssShock(f){
+    if(gameOver || !f || f.stun>0 || f.specialT>0 || f.bossSpecialCooldown>0) return false;
+
+    f.specialType='abyssShock';
+    f.specialT=.68;
+    f.attack='kick';
+    f.attackVariant='up';
+    f.attackT=.68;
+    f.bossSpecialCooldown=1.7;
+
+    setTimeout(()=>{
+      if(gameOver || !f) return;
+      abyssShocks.push({
+        owner:f,
+        x:f.x+f.face*48,
+        y:f.y+42,
+        vx:f.face*430,
+        vy:-120,
+        t:1.5,
+        life:1.5,
+        r:34,
+        hit:false
+      });
+    },130);
+
+    comboEl.textContent='アビスショック!';
+    setTimeout(()=>{if(comboEl.textContent==='アビスショック!')comboEl.textContent='';},760);
+    clearCommand();
+    return true;
+  }
+
   function specialCrayfishCounter(f){
     if(gameOver || f.stun>0 || f.throwState || f.specialT>0) return false;
     f.guard=false;
@@ -2985,6 +3126,13 @@
       }
     }
 
+    if(f.type==='beelzebub'){
+      const back=f.face>0?'left':'right';
+      const forward=f.face>0?'right':'left';
+      if(kind==='punch' && hasCommand([back,'down',forward],1000)) return specialFishRaid(f);
+      if(kind==='kick' && hasCommand([back,'down',forward],1000)) return specialAbyssShock(f);
+    }
+
     return false;
   }
 
@@ -3182,7 +3330,13 @@
       f.attack='tongue';
       f.attackT=.3;
 
-      if(Math.abs(other.x-f.x)<f.tongueRange && Math.abs(other.y-f.y)<82 && Math.sign(other.x-f.x)===dir){
+      const tongueDy=Math.abs(other.y-f.y);
+      const tongueTolerance=f.type==='beelzebub' ? 145 : 82;
+      if(Math.abs(other.x-f.x)<f.tongueRange && tongueDy<tongueTolerance && Math.sign(other.x-f.x)===dir){
+        if(f.type==='beelzebub'){
+          // 軽く上下へ追尾するよう、舌を出す瞬間に相手側へ少し寄せる
+          f.bossTongueAimY=(other.y-f.y)*.42;
+        }
         setTimeout(()=>{
           if(!other.guard){
             // まず小ダメージ
@@ -3275,9 +3429,14 @@
         restartButton.textContent='キャラ選択へ';
       }else if(storyFightIndex>=storyQueue.length-1){
         storyFinished=true;
-        comboEl.textContent=playerWon
-          ? `STORY CLEAR!　${storyWins}勝 ${storyLosses}敗`
-          : `STORY END　${storyWins}勝 ${storyLosses}敗`;
+        if(playerWon && storyLosses===0 && selectedFighter!=='beelzebub'){
+          unlockBeelzebub();
+          comboEl.textContent=`PERFECT CLEAR!　ベルゼブブさん解禁!`;
+        }else{
+          comboEl.textContent=playerWon
+            ? `STORY CLEAR!　${storyWins}勝 ${storyLosses}敗`
+            : `STORY END　${storyWins}勝 ${storyLosses}敗`;
+        }
         restartButton.textContent='キャラ選択へ';
       }else{
         comboEl.textContent=playerWon ? 'YOU WIN!　次の相手へ' : `YOU LOSE　残り猶予 ${3-storyLosses}`;
@@ -3351,6 +3510,14 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          // ベルゼブブさん：方向キー1回転＋ガードで毒水
+          if(player.type==='beelzebub' && !player.throwState && hasFullCircle(1100)){
+            if(specialVenomWater(player)){
+              btn.classList.remove('pressed');
+              return;
+            }
+          }
+
           // アスモデウスさん：下＋ガード×2で近距離カウンター構え
           if(player.type==='crayfish' && !player.throwState){
             const now=performance.now();
@@ -3553,6 +3720,13 @@
     if(enemy.stun>0)return;
     const dx=player.x-enemy.x,dy=player.y-enemy.y,dist=Math.hypot(dx,dy);
     if(enemy.attackT<=0){
+      if(enemy.type==='beelzebub' && enemy.specialT<=0 && enemy.bossSpecialCooldown<=0){
+        const roll=Math.random();
+        if(roll<dt*.16){ specialVenomWater(enemy); return; }
+        if(roll<dt*.34){ specialFishRaid(enemy); return; }
+        if(roll<dt*.52){ specialAbyssShock(enemy); return; }
+      }
+
       if(dist>105){ enemy.vx += Math.sign(dx)*enemy.speed*.9*dt; enemy.vy += Math.sign(dy)*enemy.speed*.55*dt; }
       else if(Math.random()<dt*.8) attack(enemy,Math.random()<.62?'punch':'kick');
       if(enemy.tonguePullTarget && enemy.tonguePullTimer>0 && Math.random()<dt*2.2){
@@ -3932,6 +4106,67 @@ function drawBackground(dt){
       });
       aquaVortices=aquaVortices.filter(v=>v.t>0);
 
+      toxicWaters.forEach(v=>{
+        v.t-=dt;
+        v.tick-=dt;
+        const target=v.owner && v.owner.isPlayer ? enemy : player;
+        if(target && v.tick<=0){
+          v.tick=.48;
+          // 紫の水の間、相手だけ。ガードし続けていれば無傷。
+          if(!target.guard){
+            v.owner._projectileHit=true;
+            damageHit(v.owner,target,1.45*v.owner.damageMul,0,0);
+            v.owner._projectileHit=false;
+          }
+        }
+      });
+      toxicWaters=toxicWaters.filter(v=>v.t>0);
+
+      bossFish.forEach(fish=>{
+        fish.t-=dt;
+        fish.phase+=dt*7;
+        const target=fish.target;
+        if(target){
+          const dx=target.x-fish.x, dy=target.y-fish.y;
+          const d=Math.hypot(dx,dy)||1;
+          fish.vx+=(dx/d)*260*dt;
+          fish.vy+=(dy/d)*210*dt;
+          const sp=Math.hypot(fish.vx,fish.vy)||1;
+          const maxSp=235;
+          if(sp>maxSp){fish.vx=fish.vx/sp*maxSp;fish.vy=fish.vy/sp*maxSp;}
+          fish.x+=fish.vx*dt;
+          fish.y+=fish.vy*dt+Math.sin(fish.phase)*6*dt;
+
+          // 相手の攻撃に触れれば小魚は1発で倒せる
+          const attacking=target.attackT>0 || target.tongueT>0 || target.specialT>0;
+          if(attacking && Math.hypot(target.x-fish.x,target.y-fish.y)<target.radius+72){
+            fish.hp=0;
+            spawnImpact(fish.x,fish.y,'guard');
+          }else if(Math.hypot(target.x-fish.x,target.y-fish.y)<target.radius+fish.r+8){
+            fish.hp=0;
+            fish.owner._projectileHit=true;
+            damageHit(fish.owner,target,1.25*fish.owner.damageMul,45*Math.sign(fish.vx||1),-8);
+            fish.owner._projectileHit=false;
+          }
+        }
+      });
+      bossFish=bossFish.filter(f=>f.t>0 && f.hp>0);
+
+      abyssShocks.forEach(w=>{
+        w.t-=dt;
+        w.x+=w.vx*dt;
+        w.y+=w.vy*dt;
+        w.r+=18*dt;
+        const target=w.owner && w.owner.isPlayer ? enemy : player;
+        if(!w.hit && target && Math.hypot(target.x-w.x,target.y-w.y)<target.radius+w.r){
+          w.hit=true;
+          w.owner._projectileHit=true;
+          damageHit(w.owner,target,8.5*w.owner.damageMul,190*w.owner.face,-165);
+          w.owner._projectileHit=false;
+        }
+      });
+      abyssShocks=abyssShocks.filter(w=>w.t>0 && !w.hit && w.x>-100 && w.x<innerWidth+100);
+
       pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -4156,6 +4391,64 @@ function drawBackground(dt){
         ctx.restore();
       });
     }
+
+    toxicWaters.forEach(v=>{
+      const a=Math.max(0,v.t/v.life);
+      ctx.save();
+      ctx.globalAlpha=.18+Math.min(.22,a*.22);
+      ctx.fillStyle='#7d24a8';
+      ctx.fillRect(0,0,innerWidth,innerHeight);
+      ctx.globalAlpha=.13;
+      ctx.fillStyle='#d64cff';
+      for(let i=0;i<9;i++){
+        const x=(i*137+performance.now()/18)%innerWidth;
+        const y=innerHeight*.25+((i*83)%Math.max(80,innerHeight*.65));
+        ctx.beginPath();
+        ctx.arc(x,y,24+(i%4)*10,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    bossFish.forEach(fish=>{
+      ctx.save();
+      ctx.translate(fish.x,fish.y);
+      if(fish.vx<0) ctx.scale(-1,1);
+      ctx.fillStyle='#72c75d';
+      ctx.beginPath();
+      ctx.ellipse(0,0,fish.r*1.25,fish.r*.72,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle='#e64b38';
+      ctx.beginPath();
+      ctx.moveTo(fish.r*.7,0);
+      ctx.lineTo(fish.r*1.7,-fish.r*.7);
+      ctx.lineTo(fish.r*1.7,fish.r*.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(-fish.r*.45,-2,2.5,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    });
+
+    abyssShocks.forEach(w=>{
+      const a=Math.max(0,w.t/w.life);
+      ctx.save();
+      ctx.translate(w.x,w.y);
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.55*a;
+      ctx.strokeStyle='#d9ff8a';
+      ctx.lineWidth=10;
+      ctx.beginPath();
+      ctx.arc(0,0,w.r,-1.0,1.0);
+      ctx.stroke();
+      ctx.globalAlpha=.28*a;
+      ctx.strokeStyle='#8fff2c';
+      ctx.lineWidth=22;
+      ctx.beginPath();
+      ctx.arc(0,0,w.r*.82,-1.05,1.05);
+      ctx.stroke();
+      ctx.restore();
+    });
 
     // ガブリエルさん：その場に残る小型渦
     aquaVortices.forEach(v=>{

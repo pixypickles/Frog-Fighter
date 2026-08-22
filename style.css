@@ -477,3 +477,8 @@ button{font:inherit;color:inherit}
 
 .move-names{font-weight:900;line-height:1.35}
 .move-detail-note{opacity:.72;font-size:.78em}
+
+.boss-card{
+  border-color:rgba(154,255,68,.75)!important;
+  box-shadow:0 0 18px rgba(110,255,40,.18);
+}

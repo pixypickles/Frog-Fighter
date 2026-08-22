@@ -15,7 +15,7 @@
       <h1>カエルファイター</h1>
       <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
       <p class="rotate-note">スマホを横持ちしてください</p>
-      <div class="start-version">VERSION 6.12</div>
+      <div class="start-version">VERSION 6.13</div>
       <button id="desktopStart" class="soft-btn">PCで試す</button>
     </section>
 
@@ -86,6 +86,13 @@
           <span class="special-hint move-names">クローラッシュ / ボトムスマッシュ / クロー・カウンター</span>
           <span class="special-hint move-detail-note">技の詳細は操作練習にて</span>
         </button>
+        <button id="beelzebubCard" class="fighter-card boss-card" data-fighter="beelzebub" hidden>
+          <span class="fighter-emoji boss-frog">🐸</span>
+          <strong>ベルゼブブさん</strong>
+          <small>ラスボス・毒水支配型</small>
+          <span class="special-hint move-names">ヴェノム・ウォーター / フィッシュ・レイド / アビスショック</span>
+          <span class="special-hint move-detail-note">技の詳細は操作練習にて</span>
+        </button>
       </div>
 
       <div class="battle-mode-panel">
@@ -100,6 +107,7 @@
             <option value="orange">ウリエルさん</option>
             <option value="piranha">リヴァイアさん</option>
             <option value="crayfish">アスモデウスさん</option>
+            <option id="beelzebubOpponent" value="beelzebub" hidden>ベルゼブブさん</option>
           </select>
         </div>
         <div class="story-rule">
@@ -173,7 +181,7 @@
     <div id="portraitOverlay">
       <div class="portrait-frog">🐸</div>
       <strong>スマホを横持ちしてください</strong>
-      <span class="portrait-version">VERSION 6.12</span>
+      <span class="portrait-version">VERSION 6.13</span>
     </div>
   </div>
   <script src="game.js"></script>
