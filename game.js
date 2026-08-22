@@ -13,6 +13,11 @@
   const titleReturnButton=document.getElementById('titleReturnButton');
   const beelzebubCard=document.getElementById('beelzebubCard');
   const beelzebubOpponent=document.getElementById('beelzebubOpponent');
+  const kawazuCard=document.getElementById('kawazuCard');
+  const kawazuOpponent=document.getElementById('kawazuOpponent');
+  const storyNarrative=document.getElementById('storyNarrative');
+  const storyNarrativeText=document.getElementById('storyNarrativeText');
+  const storyNarrativeNext=document.getElementById('storyNarrativeNext');
   const practiceHelp=document.getElementById('practiceHelp');
   const practiceSpecialTitle=document.getElementById('practiceSpecialTitle');
   const practiceSpecialMoves=document.getElementById('practiceSpecialMoves');
@@ -53,6 +58,8 @@
   let toxicWaters=[];
   let bossFish=[];
   let abyssShocks=[];
+  let kawazuShots=[];
+  let kawazuGhosts=[];
   let siltClouds = [];
   let catfishCharges = [];
   let pressureBlades = [];
@@ -83,7 +90,8 @@
     orange:  { speed: 142, tongue: 215, damage: 1.05, defense:1.28, sink:9, hue:0, scale:1.10 },
     piranha: { speed: 198, tongue: 0,   damage: 1.08, defense:0.90, sink:3, hue:0, scale:0.95 },
     crayfish:{ speed: 138, tongue: 0,   damage: 1.18, defense:1.20, sink:10,hue:0, scale:1.08 },
-    beelzebub:{speed: 158, tongue: 415, damage: 1.28, defense:1.22, sink:8, hue:0, scale:1.13}
+    beelzebub:{speed: 158, tongue: 415, damage: 1.28, defense:1.22, sink:8, hue:0, scale:1.13},
+    kawazu: {speed: 220, tongue: 225, damage: 0.94, defense:0.94, sink:4, hue:0, scale:0.86}
   };
 
   function show(name) {
@@ -122,6 +130,44 @@
   function unlockBeelzebub(){
     try{localStorage.setItem('kaeru_beelzebub_unlocked','1');}catch(e){}
     refreshBossUnlock();
+
+  function isKawazuUnlocked(){
+    try{return localStorage.getItem('kaeru_kawazu_unlocked')==='1';}
+    catch(e){return false;}
+  }
+  function refreshKawazuUnlock(){
+    const unlocked=isKawazuUnlocked();
+    if(kawazuCard) kawazuCard.hidden=!unlocked;
+    if(kawazuOpponent) kawazuOpponent.hidden=!unlocked;
+  }
+  function unlockKawazu(){
+    try{localStorage.setItem('kaeru_kawazu_unlocked','1');}catch(e){}
+    refreshKawazuUnlock();
+  }
+  refreshKawazuUnlock();
+
+  function showStoryNarrative(pages,onDone){
+    if(!storyNarrative || !storyNarrativeText || !storyNarrativeNext){
+      if(onDone)onDone(); return;
+    }
+    let i=0;
+    const render=()=>{
+      storyNarrativeText.textContent=pages[i];
+      storyNarrativeNext.textContent=i===pages.length-1?'進む':'次へ';
+    };
+    storyNarrative.hidden=false;
+    render();
+    storyNarrativeNext.onclick=()=>{
+      i++;
+      if(i>=pages.length){
+        storyNarrative.hidden=true;
+        storyNarrativeNext.onclick=null;
+        if(onDone)onDone();
+      }else render();
+    };
+  }
+
+
   }
 
   refreshBossUnlock();
@@ -329,6 +375,16 @@
   }
 
   function fighterPalette(type){
+    if(type==='kawazu'){
+      return {
+        body:'#55bd54',
+        limb:'#f06a32',
+        light:'#8bdc68',
+        belly:'#f1d7ad',
+        eyeBump:'#f04d2d'
+      };
+    }
+
     if(type==='black'){
       return {
         body:'#3b4048',
@@ -1205,6 +1261,15 @@
         ctx.arc(-16,-29,4,0,Math.PI*2);
         ctx.arc(22,-29,4,0,Math.PI*2);
         ctx.fill();
+
+        if(this.type==='kawazu'){
+          ctx.strokeStyle='#ff6a22';
+          ctx.lineWidth=4;
+          ctx.beginPath();
+          ctx.arc(-19,-30,7,0,Math.PI*2);
+          ctx.arc(19,-30,7,0,Math.PI*2);
+          ctx.stroke();
+        }
       }
 
       // ほっぺ
@@ -2134,7 +2199,7 @@
   }
 
 
-  const playableTypes=['green','blue','black','purple','yellow','orange','piranha','crayfish'];
+  const playableTypes=['green','blue','black','purple','yellow','orange','piranha','crayfish'].concat(isKawazuUnlocked()?['kawazu']:[]);
 
   function practiceSpecialText(type){
     const map={
@@ -2184,6 +2249,11 @@
         '方向キー1回転 ＋ ガード：ヴェノム・ウォーター',
         '↓ → ＋ パンチ：フィッシュ・レイド',
         '↓ → ＋ キック：アビスショック'
+      ],
+      kawazu:[
+        '↓ → ＋ パンチ：水圧ラッシュ（小型衝撃波を扇状に乱射）',
+        '↓ → ＋ キック：ミラージュキック（初撃ヒットで残像連続蹴り）',
+        '時計回り1回転 ＋ キック：ハイスピードサイクロン'
       ]
     };
     return map[type] || ['専用必殺技：準備中'];
@@ -2213,14 +2283,14 @@
       green:'ミカエルさん', blue:'ガブリエルさん', black:'ルシファーさん',
       purple:'リリスさん', yellow:'ラファエルさん', orange:'ウリエルさん',
       piranha:'リヴァイアさん', crayfish:'アスモデウスさん',
-      beelzebub:'ベルゼブブさん'
+      beelzebub:'ベルゼブブさん', kawazu:'カワズさん'
     }[type]||type;
   }
 
   function resetBattleEffects(){
     particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
-    leafTargets=[]; guardTargets=[]; toxicWaters=[]; bossFish=[]; abyssShocks=[];
+    leafTargets=[]; guardTargets=[]; toxicWaters=[]; bossFish=[]; abyssShocks=[]; kawazuShots=[]; kawazuGhosts=[];
   }
 
   function startGame(mode='free', enemyType=null) {
@@ -2295,7 +2365,12 @@
 
     show('game');
     resize();
-    startGame('story',storyQueue[0]);
+
+    showStoryNarrative([
+      '仕事に疲れた河津一郎は、帰り道、ぼんやりと池を眺めていた。\n\n水の中を泳ぐ一匹のカエル。\n\n「……あいつらは呑気でいいよな」',
+      'しばらく眺めているうちに、ふと思う。\n\n「いや、待てよ……」\n\n「あいつらはあいつらで、厳しい世界を生き抜いているのかもしれない」',
+      '河津一郎は妄想し始めた――。'
+    ],()=>startGame('story',storyQueue[0]));
   }
 
   function continueStory(){
@@ -3208,8 +3283,83 @@
     return taps.length>=2;
   }
 
+  function specialKawazuPressureRush(f){
+    if(gameOver || f.stun>0 || f.specialT>0)return false;
+    f.specialType='kawazuPressureRush';f.specialT=.62;f.attack='punch';f.attackT=.62;
+    const count=14;
+    for(let i=0;i<count;i++){
+      const spread=(-.48+Math.random()*.96);
+      const speed=390+Math.random()*170;
+      kawazuShots.push({
+        owner:f,x:f.x+f.face*45,y:f.y+5+(Math.random()-.5)*20,
+        vx:f.face*Math.cos(spread)*speed,vy:Math.sin(spread)*speed,
+        r:8+Math.random()*4,t:.9,life:.9,hit:false
+      });
+    }
+    comboEl.textContent='水圧ラッシュ!';
+    clearCommand();return true;
+  }
+
+  function specialKawazuMirageKick(f){
+    if(gameOver || f.stun>0 || f.specialT>0)return false;
+    const other=f.isPlayer?enemy:player;
+    f.specialType='kawazuMirageKick';f.specialT=1.0;f.attack='kick';f.attackT=1.0;
+    f.vx=f.face*760;
+    const startFace=f.face;
+    setTimeout(()=>{
+      if(gameOver||!other||f.specialType!=='kawazuMirageKick')return;
+      if(Math.hypot(other.x-f.x,other.y-f.y)<other.radius+f.radius+72){
+        f.vx=0;other.stun=Math.max(other.stun,.95);
+        for(let i=0;i<9;i++){
+          setTimeout(()=>{
+            if(gameOver||!other)return;
+            const a=i*Math.PI*2/9;
+            const gx=other.x+Math.cos(a)*72,gy=other.y+Math.sin(a)*54;
+            kawazuGhosts.push({x:gx,y:gy,t:.22,life:.22,angle:a});
+            spawnImpact(other.x+Math.cos(a)*20,other.y+Math.sin(a)*15,'hit');
+            damageHit(f,other,(i===8?2.8:1.05)*f.damageMul,(i===8?190:12)*startFace,(i===8?-55:0));
+          },i*62);
+        }
+      }
+    },105);
+    comboEl.textContent='ミラージュキック!';
+    clearCommand();return true;
+  }
+
+  function specialKawazuCyclone(f){
+    if(gameOver || f.stun>0 || f.specialT>0)return false;
+    const other=f.isPlayer?enemy:player;
+    if(!other)return false;
+    f.specialType='kawazuCyclone';f.specialT=1.15;f.attack='kick';f.attackT=1.15;
+    const dir=f.face;
+    other.stun=Math.max(other.stun,1.0);
+    for(let i=0;i<14;i++){
+      setTimeout(()=>{
+        if(gameOver||!other)return;
+        const a=i*Math.PI*2/7;
+        f.x=Math.max(45,Math.min(innerWidth-45,other.x+Math.cos(a)*64));
+        f.y=Math.max(55,Math.min(innerHeight-55,other.y+Math.sin(a)*48));
+        kawazuGhosts.push({x:f.x,y:f.y,t:.18,life:.18,angle:a});
+        if(Math.hypot(f.x-other.x,f.y-other.y)<100){
+          damageHit(f,other,(i===13?3.2:.72)*f.damageMul,(i===13?225:8)*dir,(i===13?-65:0));
+        }
+      },i*55);
+    }
+    comboEl.textContent='ハイスピードサイクロン!';
+    clearCommand();return true;
+  }
+
   function trySpecial(f,kind){
     if(!f) return false;
+
+    if(f.type==='kawazu'){
+      const forward=f.face>0?'right':'left';
+      const downForward=f.face>0?'downRight':'downLeft';
+      if(kind==='kick' && hasFacingCircle(f,true,1000)) return specialKawazuCyclone(f);
+      const q=hasCommand(['down',forward],760)||hasCommand(['down',downForward],760)||hasCommand([downForward,forward],760);
+      if(q && kind==='punch') return specialKawazuPressureRush(f);
+      if(q && kind==='kick') return specialKawazuMirageKick(f);
+    }
 
     if(f.type==='green'){
       if(kind==='kick' && hasFacingCircle(f,true,1100)){
@@ -3611,13 +3761,24 @@
         restartButton.textContent='キャラ選択へ';
       }else if(storyFightIndex>=storyQueue.length-1){
         storyFinished=true;
-        if(playerWon && storyLosses===0 && selectedFighter!=='beelzebub'){
-          unlockBeelzebub();
-          comboEl.textContent=`PERFECT CLEAR!　ベルゼブブさん解禁!`;
+        const perfectUnlock=playerWon && storyLosses===0 && selectedFighter!=='beelzebub';
+        if(perfectUnlock) unlockBeelzebub();
+
+        if(playerWon){
+          const firstKawazu=!isKawazuUnlocked();
+          unlockKawazu();
+          comboEl.textContent=perfectUnlock
+            ? `PERFECT CLEAR!　ベルゼブブさん＆カワズさん解禁!`
+            : `STORY CLEAR!　カワズさん解禁!`;
+          restartButton.hidden=true;
+          showStoryNarrative([
+            '激闘の末、ベルゼブブさんは倒れた。\n\n……\n\n池を眺めていた河津一郎は、我に返った。',
+            '河津一郎「……俺も、負けちゃいられないな」\n\n一郎は立ち上がった。\n\nそして――\n\n池に飛び込んだ。\n\nポチャン。',
+            '水かきのついた手足で、ものすごい勢いで水中を泳いでいく河津一郎。\n\n……って、お前もカエルかよ！',
+            '河津一郎――いや、\n\nカワズさん参戦！！'
+          ],()=>{restartButton.hidden=false;});
         }else{
-          comboEl.textContent=playerWon
-            ? `STORY CLEAR!　${storyWins}勝 ${storyLosses}敗`
-            : `STORY END　${storyWins}勝 ${storyLosses}敗`;
+          comboEl.textContent=`STORY END　${storyWins}勝 ${storyLosses}敗`;
         }
         restartButton.textContent='キャラ選択へ';
       }else{
@@ -4441,7 +4602,39 @@ function drawBackground(dt){
         if(basketMiniTime<=0){basketMiniTime=0;endBasketMiniGame();}
       }
 
-      pressureBlades.forEach(p=>{
+      kawazuShots.forEach(p=>{
+        p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+        const target=p.owner&&p.owner.isPlayer?enemy:player;
+        if(!p.hit&&target&&Math.hypot(target.x-p.x,target.y-p.y)<target.radius+p.r){
+          p.hit=true;
+          p.owner._projectileHit=true;
+          damageHit(p.owner,target,1.15*p.owner.damageMul,30*Math.sign(p.vx),p.vy*.08);
+          p.owner._projectileHit=false;
+        }
+      });
+      kawazuShots=kawazuShots.filter(p=>p.t>0&&!p.hit&&p.x>-40&&p.x<innerWidth+40&&p.y>-40&&p.y<innerHeight+40);
+      kawazuGhosts.forEach(q=>q.t-=dt);
+      kawazuGhosts=kawazuGhosts.filter(q=>q.t>0);
+
+      kawazuGhosts.forEach(q=>{
+      const a=Math.max(0,q.t/q.life);
+      ctx.save();ctx.translate(q.x,q.y);ctx.globalAlpha=.28*a;
+      ctx.fillStyle='#63d968';ctx.beginPath();ctx.ellipse(0,4,23,27,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#ff7138';
+      ctx.beginPath();ctx.arc(-13,-20,10,0,Math.PI*2);ctx.arc(13,-20,10,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    });
+    kawazuShots.forEach(p=>{
+      const a=Math.max(0,p.t/p.life);
+      ctx.save();ctx.translate(p.x,p.y);ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.72*a;ctx.fillStyle='#c8f7ff';
+      ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=.35*a;ctx.strokeStyle='#6ee7ff';ctx.lineWidth=5;
+      ctx.beginPath();ctx.arc(0,0,p.r+5,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    });
+
+    pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
         if(!p.hit && target){
