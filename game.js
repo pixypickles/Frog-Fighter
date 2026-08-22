@@ -461,11 +461,11 @@
     }
     if(type==='purple'){
       return {
-        body:'#8b45b5',
-        limb:'#8b45b5',
-        light:'#b66bd8',
-        belly:'#c98ae6',
-        eyeBump:'#a85ecb'
+        body:'#f05a9d',
+        limb:'#f05a9d',
+        light:'#ff8fc1',
+        belly:'#ffc1dc',
+        eyeBump:'#f777b0'
       };
     }
     if(type==='beelzebub'){
@@ -1263,67 +1263,19 @@
         ctx.restore();
       }
 
-      // リリスさん：右目の後ろに斜め付けした蝶結びリボン
+      // v6.35 リリスさん：リボンは廃止。代わりにピンク配色＋口紅。
       if(this.type==='purple'){
         ctx.save();
-
-        // 傾きを反対向きへ修正
-        ctx.translate(31,-40);
-        ctx.rotate(0.48);
-
-        ctx.strokeStyle='#8b2f72';
-        ctx.lineWidth=2.5;
-        ctx.lineJoin='round';
-
-        // 左の輪：丸ではなく先端を三角っぽく尖らせる
-        ctx.fillStyle='#ff86c8';
+        // 上唇・下唇を小さく描き、戦闘中でも顔を邪魔しない。
+        ctx.fillStyle='#d91f6f';
         ctx.beginPath();
-        ctx.moveTo(-3,2);
-        ctx.lineTo(-29,-12);
-        ctx.lineTo(-25,6);
-        ctx.lineTo(-5,8);
-        ctx.closePath();
+        ctx.ellipse(-5,17,7,2.8,-.10,0,Math.PI*2);
+        ctx.ellipse( 5,17,7,2.8, .10,0,Math.PI*2);
         ctx.fill();
-        ctx.stroke();
-
-        // 右の輪：こちらも三角寄り
+        ctx.fillStyle='#ff7fb4';
         ctx.beginPath();
-        ctx.moveTo(3,2);
-        ctx.lineTo(29,-12);
-        ctx.lineTo(25,6);
-        ctx.lineTo(5,8);
-        ctx.closePath();
+        ctx.ellipse(0,20,10,3.2,0,0,Math.PI);
         ctx.fill();
-        ctx.stroke();
-
-        // 結び目
-        ctx.fillStyle='#ffd0eb';
-        ctx.beginPath();
-        ctx.arc(0,4,6.5,0,Math.PI*2);
-        ctx.fill();
-        ctx.stroke();
-
-        // 垂れたリボン端も三角カットに
-        ctx.fillStyle='#f06fba';
-
-        ctx.beginPath();
-        ctx.moveTo(-3,9);
-        ctx.lineTo(-15,26);
-        ctx.lineTo(-7,22);
-        ctx.lineTo(-2,29);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(3,9);
-        ctx.lineTo(15,26);
-        ctx.lineTo(7,22);
-        ctx.lineTo(2,29);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
         ctx.restore();
       }
 
