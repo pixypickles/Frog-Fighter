@@ -13,8 +13,8 @@
   const titleReturnButton=document.getElementById('titleReturnButton');
   const beelzebubCard=document.getElementById('beelzebubCard');
   const beelzebubOpponent=document.getElementById('beelzebubOpponent');
-  const kawazuCard=document.getElementById('kawazuCard');
-  const kawazuOpponent=document.getElementById('kawazuOpponent');
+  let kawazuCard=document.getElementById('kawazuCard');
+  let kawazuOpponent=document.getElementById('kawazuOpponent');
   const storyNarrative=document.getElementById('storyNarrative');
   const storyNarrativeText=document.getElementById('storyNarrativeText');
   const storyNarrativeNext=document.getElementById('storyNarrativeNext');
@@ -136,9 +136,37 @@
     catch(e){return false;}
   }
   function refreshKawazuUnlock(){
-    const unlocked=isKawazuUnlocked();
-    if(kawazuCard) kawazuCard.hidden=!unlocked;
-    if(kawazuOpponent) kawazuOpponent.hidden=!unlocked;
+    // 未クリア時はDOM自体を作らない。名前・見た目・技名を完全に伏せる。
+    if(!isKawazuUnlocked()) return;
+
+    if(!kawazuCard){
+      const grid=document.querySelector('#selectScreen .fighter-grid');
+      if(grid){
+        const btn=document.createElement('button');
+        btn.id='kawazuCard';
+        btn.className='fighter-card kawazu-card';
+        btn.dataset.fighter='kawazu';
+        btn.innerHTML=`<span class="fighter-emoji kawazu-frog">🐸</span>
+          <strong>カワズさん</strong>
+          <small>隠しキャラ・小柄な高速コンボ型</small>
+          <span class="special-hint move-names">水圧ラッシュ / ミラージュキック / ハイスピードサイクロン</span>
+          <span class="special-hint move-detail-note">技の詳細は操作練習にて</span>`;
+        grid.appendChild(btn);
+        kawazuCard=btn;
+        btn.addEventListener('click',()=>{
+          document.querySelectorAll('.fighter-card').forEach(c=>c.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedFighter='kawazu';
+        });
+      }
+    }
+
+    if(!kawazuOpponent && opponentSelect){
+      const opt=document.createElement('option');
+      opt.id='kawazuOpponent'; opt.value='kawazu'; opt.textContent='カワズさん';
+      opponentSelect.appendChild(opt);
+      kawazuOpponent=opt;
+    }
   }
   function unlockKawazu(){
     try{localStorage.setItem('kaeru_kawazu_unlocked','1');}catch(e){}
