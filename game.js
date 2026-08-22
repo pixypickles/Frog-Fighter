@@ -1207,17 +1207,22 @@
         ctx.restore();
       }
 
-      // ニュートラル脚：キック中は両方とも消し、攻撃ポーズの脚だけ描く。
+      // ニュートラル脚：
+      // キック中は蹴り足側だけ消し、反対側の軸足は残す。
+      ctx.strokeStyle=pal.limb;
+      ctx.lineWidth=12;
+      ctx.lineCap='round';
+      ctx.lineJoin='round';
+      ctx.beginPath();
+
+      // 左側の脚は軸足として常に残す
+      ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
+
+      // 右側の脚はキック中だけ攻撃ポーズ側へ差し替える
       if(this.attack!=='kick'){
-        ctx.strokeStyle=pal.limb;
-        ctx.lineWidth=12;
-        ctx.lineCap='round';
-        ctx.lineJoin='round';
-        ctx.beginPath();
-        ctx.moveTo(-15,48); ctx.lineTo(-19,62); ctx.lineTo(-28,67);
         ctx.moveTo(15,48); ctx.lineTo(19,62); ctx.lineTo(28,67);
-        ctx.stroke();
       }
+      ctx.stroke();
 
       // ニュートラル腕。
       // パンチ中・ガード中は通常腕を描かず、それぞれ専用ポーズに差し替える。
@@ -1237,13 +1242,14 @@
         ctx.save();
         ctx.fillStyle='#ff7a2f';
 
-        // 通常足先もキック中は消す。蹴っている足先は攻撃ポーズ側で描画。
+        // 足先：
+        // キック中も軸足側（左）は残し、蹴り足側（右）だけ攻撃用へ差し替える。
+        ctx.beginPath();
+        ctx.ellipse(-29,67,10,7,-.18,0,Math.PI*2);
         if(this.attack!=='kick'){
-          ctx.beginPath();
-          ctx.ellipse(-29,67,10,7,-.18,0,Math.PI*2);
           ctx.ellipse(29,67,10,7,.18,0,Math.PI*2);
-          ctx.fill();
         }
+        ctx.fill();
 
         // 手先
         if(!this.guard && this.attack!=='wave'){
