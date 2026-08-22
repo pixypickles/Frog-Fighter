@@ -4666,6 +4666,38 @@ function drawBackground(dt){
             endRaceMiniGame();
           }
         }
+        // v6.40: 楕円の中央は通行禁止。リング状のコース内だけ走れる。
+        {
+          const xs=raceCheckpoints.map(p=>p.x), ys=raceCheckpoints.map(p=>p.y);
+          const rcx=(Math.min(...xs)+Math.max(...xs))/2, rcy=(Math.min(...ys)+Math.max(...ys))/2;
+          const rrx=(Math.max(...xs)-Math.min(...xs))/2, rry=(Math.max(...ys)-Math.min(...ys))/2;
+          const laneHalf=48;
+          const keepOnRing=(f)=>{
+            if(!f)return;
+            let nx=(f.x-rcx)/Math.max(1,rrx-laneHalf);
+            let ny=(f.y-rcy)/Math.max(1,rry-laneHalf);
+            const inner=Math.sqrt(nx*nx+ny*ny);
+            if(inner<1){
+              const a=Math.atan2((f.y-rcy)/rry,(f.x-rcx)/rrx);
+              f.x=rcx+Math.cos(a)*(rrx-laneHalf);
+              f.y=rcy+Math.sin(a)*(rry-laneHalf);
+              // 中央へ向かう速度を弱く跳ね返す
+              const ux=Math.cos(a),uy=Math.sin(a);
+              const dot=f.vx*ux+f.vy*uy;
+              if(dot<0){f.vx-=dot*1.35*ux;f.vy-=dot*1.35*uy;}
+            }
+            nx=(f.x-rcx)/Math.max(1,rrx+laneHalf);
+            ny=(f.y-rcy)/Math.max(1,rry+laneHalf);
+            const outer=Math.sqrt(nx*nx+ny*ny);
+            if(outer>1){
+              const a=Math.atan2((f.y-rcy)/rry,(f.x-rcx)/rrx);
+              f.x=rcx+Math.cos(a)*(rrx+laneHalf);
+              f.y=rcy+Math.sin(a)*(rry+laneHalf);
+            }
+          };
+          keepOnRing(player); keepOnRing(enemy);
+        }
+
         // CPUレーサーも同じ楕円を走る。少しだけライン取りに揺らぎを入れる。
         const ecp=raceCheckpoints[raceEnemyCheckpointIndex];
         if(ecp && enemy){
@@ -4677,7 +4709,8 @@ function drawBackground(dt){
             raceEnemyCheckpointIndex++;
             if(raceEnemyCheckpointIndex>=raceCheckpoints.length){
               raceMiniActive=false;
-              comboEl.textContent='RIVAL WIN!';
+              comboEl.textContent='レース結果：RIVALの勝ち！';
+              comboEl.style.fontSize='clamp(28px,5vw,56px)';
               restartButton.hidden=false;
             }
           }
@@ -4914,6 +4947,11 @@ function drawBackground(dt){
       ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
       ctx.strokeStyle='rgba(70,225,240,.75)';ctx.lineWidth=3;
       ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      // 中央は通れないことが視覚的にも分かる内周境界
+      ctx.fillStyle='rgba(0,72,82,.32)';
+      ctx.beginPath();ctx.ellipse(cx,cy,Math.max(20,rx-48),Math.max(20,ry-48),0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.62)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(cx,cy,Math.max(20,rx-48),Math.max(20,ry-48),0,0,Math.PI*2);ctx.stroke();
       for(let i=2;i<raceCheckpoints.length;i+=4){
         const p=raceCheckpoints[i], q=raceCheckpoints[Math.min(i+1,raceCheckpoints.length-1)];
         const ang=Math.atan2(q.y-p.y,q.x-p.x);
