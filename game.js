@@ -2176,7 +2176,7 @@
       ],
       crayfish:[
         'パンチ×3：クローラッシュ',
-        '↓ ↓ ＋ キック：ボトムスマッシュ',
+        '← ↓ ＋ キック：ボトムスマッシュ',
         '↓ ＋ ガード×2：クロー・カウンター'
       ],
       beelzebub:[
@@ -3268,7 +3268,7 @@
     }
 
     if(f.type==='crayfish'){
-      if(kind==='kick' && hasCommand(['down','down'],850)){
+      if(kind==='kick' && hasCommand([f.face>0?'left':'right','down'],850)){
         clearCommand();
         return specialCrayfishBottomSmash(f);
       }
