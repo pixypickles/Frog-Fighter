@@ -40,6 +40,7 @@
   let hitRings = [];
   let guardWaves = [];
   let aquaTornadoes = [];
+  let aquaVortices = [];
   let siltClouds = [];
   let catfishCharges = [];
   let pressureBlades = [];
@@ -1660,7 +1661,7 @@
       r:2+Math.random()*6,s:10+Math.random()*26
     }));
 
-    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
     for(let i=0;i<12;i++){
@@ -1744,7 +1745,7 @@
     if(guardMiniMissEl) guardMiniMissEl.textContent='0';
     if(practiceExitButton){practiceExitButton.hidden=false;practiceExitButton.textContent='ミニゲーム終了';}
     if(practiceLabel) practiceLabel.style.display='none';
-    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; siltClouds=[];
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[]; siltClouds=[];
     catfishCharges=[]; pressureBlades=[]; burstWaves=[];
 
     // 最初は1体だけ。いきなり複数が同時に来ないようにする。
@@ -1784,12 +1785,12 @@
     particles=[];
     hitRings=[];
     guardWaves=[];
-    aquaTornadoes=[];
+    aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[];
     catfishCharges=[];
     pressureBlades=[];
     burstWaves=[];
-    aquaTornadoes=[];
+    aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[];
     catfishCharges=[];
     burstWaves=[];
@@ -1820,7 +1821,8 @@
       ],
       blue:[
         '↙ ↗ ＋ パンチ：アクアトルネード',
-        '↖ ↘ ＋ キック：アクアストリーム'
+        '↖ ↘ ＋ キック：アクアストリーム',
+        '↓ → ＋ パンチ：アクアボルテックス'
       ],
       black:[
         '→ → ＋ パンチ：ヘルクラッシュ',
@@ -1883,7 +1885,7 @@
   }
 
   function resetBattleEffects(){
-    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[];
+    particles=[]; hitRings=[]; guardWaves=[]; aquaTornadoes=[]; aquaVortices=[];
     siltClouds=[]; catfishCharges=[]; pressureBlades=[]; burstWaves=[];
     leafTargets=[]; guardTargets=[];
   }
@@ -1992,6 +1994,56 @@
     return 'mid';
   }
 
+  function auraCancelZones(f){
+    if(!f) return [];
+    const z=[];
+    const fx=x=>f.x+f.face*x;
+
+    if(f.type==='green' && f.specialType==='uppercut' && f.specialT<=.54 && f.specialT>=.08)
+      z.push({owner:f,x:fx(48),y:f.y-22,r:30});
+    if(f.type==='green' && f.specialType==='dropkick' && f.specialT<=.475 && f.specialT>=.06)
+      z.push({owner:f,x:fx(61),y:f.y+39,r:34});
+
+    if(f.type==='black' && f.specialType==='hellCrashFinish')
+      z.push({owner:f,x:fx(48),y:f.y-38,r:34});
+    if(f.type==='black' && f.specialType==='abyssCharge')
+      z.push({owner:f,x:fx(26),y:f.y+8,r:27});
+    if(f.type==='black' && f.specialType==='abyssBurst')
+      z.push({owner:f,x:fx(64),y:f.y+7,r:36});
+
+    if(f.type==='orange' && f.specialType==='whiteCounterHit')
+      z.push({owner:f,x:fx(58),y:f.y+7,r:32});
+
+    return z;
+  }
+
+  function cancelSoftProjectilesAtZone(z){
+    if(!z || !z.owner) return;
+
+    pressureBlades.forEach(p=>{
+      if(p.hit || !p.owner || p.owner===z.owner) return;
+      if(Math.hypot(p.x-z.x,p.y-z.y)<z.r+30){
+        p.hit=true; p.t=0;
+        spawnImpact(p.x,p.y,'guard');
+      }
+    });
+
+    catfishCharges.forEach(n=>{
+      if(n.hit || !n.owner || n.owner===z.owner) return;
+      const headX=n.x+Math.sign(n.vx||1)*58;
+      if(Math.hypot(headX-z.x,n.y-z.y)<z.r+58){
+        n.hit=true; n.t=0;
+        spawnImpact(headX,n.y,'guard');
+      }
+    });
+  }
+
+  function cancelSoftProjectilesByAura(){
+    [player,enemy].filter(Boolean).forEach(f=>{
+      auraCancelZones(f).forEach(cancelSoftProjectilesAtZone);
+    });
+  }
+
   function pointToSegmentDistance(px,py,x1,y1,x2,y2){
     const vx=x2-x1, vy=y2-y1;
     const wx=px-x1, wy=py-y1;
@@ -2000,6 +2052,34 @@
     t=Math.max(0,Math.min(1,t));
     const cx=x1+vx*t, cy=y1+vy*t;
     return Math.hypot(px-cx,py-cy);
+  }
+
+  function specialAquaVortex(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    const dir=f.face;
+    f.specialType='aquaVortex';
+    f.specialT=.48;
+    f.attack='punch';
+    f.attackVariant='mid';
+    f.attackT=.48;
+
+    aquaVortices.push({
+      owner:f,
+      x:f.x+dir*52,
+      y:f.y+7,
+      r:34,
+      t:3.0,
+      life:3.0,
+      spin:0,
+      lastHitAt:-9999
+    });
+
+    comboEl.textContent='アクアボルテックス!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='アクアボルテックス!') comboEl.textContent='';
+    },700);
+    return true;
   }
 
   function specialAquaTornado(f){
@@ -2569,6 +2649,13 @@
       const forwardUp=f.face>0?'upRight':'upLeft';
       const backUp=f.face>0?'upLeft':'upRight';
       const forwardDown=f.face>0?'downRight':'downLeft';
+
+      const forward=f.face>0?'right':'left';
+
+      if(kind==='punch' && hasCommand(['down',forward],720)){
+        clearCommand();
+        return specialAquaVortex(f);
+      }
 
       if(kind==='punch' && hasCommand([backDown,forwardUp],780)){
         clearCommand();
@@ -3364,6 +3451,28 @@ function drawBackground(dt){
         }
       }
 
+      // オーラのある拳・脚で水圧カッター／ナマズを打ち消す。
+      // ガブリエルさんの長い水流は貫通系なので対象外。
+      cancelSoftProjectilesByAura();
+
+      aquaVortices.forEach(v=>{
+        v.t-=dt;
+        v.spin+=dt*8.5;
+
+        cancelSoftProjectilesAtZone({owner:v.owner,x:v.x,y:v.y,r:v.r});
+
+        const target=v.owner && v.owner.isPlayer ? enemy : player;
+        if(target){
+          const d=Math.hypot(target.x-v.x,target.y-v.y);
+          const now=performance.now();
+          if(d<target.radius+v.r && now-v.lastHitAt>260){
+            v.lastHitAt=now;
+            damageHit(v.owner,target,1.15*v.owner.damageMul,26*v.owner.face,-8);
+          }
+        }
+      });
+      aquaVortices=aquaVortices.filter(v=>v.t>0);
+
       pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -3572,6 +3681,25 @@ function drawBackground(dt){
         ctx.restore();
       });
     }
+
+    // ガブリエルさん：その場に残る小型渦
+    aquaVortices.forEach(v=>{
+      const a=Math.max(0,v.t/v.life);
+      ctx.save();
+      ctx.translate(v.x,v.y);
+      ctx.rotate(v.spin);
+      ctx.globalCompositeOperation='lighter';
+
+      for(let i=0;i<3;i++){
+        ctx.globalAlpha=(.44-i*.08)*Math.min(1,a*1.8);
+        ctx.strokeStyle=i===0?'#e7ffff':(i===1?'#7ee5ff':'#37bee8');
+        ctx.lineWidth=6-i*1.2;
+        ctx.beginPath();
+        ctx.arc(0,0,v.r-i*8,.20*Math.PI,1.78*Math.PI);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
 
     // ラファエルさん：控えめな三日月型の水圧カッター
     // 描画順だけは修正版のまま。見た目は最初の予定に近くする。

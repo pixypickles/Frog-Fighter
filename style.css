@@ -474,3 +474,6 @@ button{font:inherit;color:inherit}
   font-weight:800;
   opacity:.72;
 }
+
+.move-names{font-weight:900;line-height:1.35}
+.move-detail-note{opacity:.72;font-size:.78em}
