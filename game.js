@@ -2020,8 +2020,8 @@
       beelzebub:[
         '舌：通常の約1.5倍リーチ＋軽い上下追尾',
         '方向キー1回転 ＋ ガード：ヴェノム・ウォーター',
-        '後ろ → 下 → 前 ＋ パンチ：フィッシュ・レイド',
-        '後ろ → 下 → 前 ＋ キック：アビスショック'
+        '↓ → ＋ パンチ：フィッシュ・レイド',
+        '↓ → ＋ キック：アビスショック'
       ]
     };
     return map[type] || ['専用必殺技：準備中'];
@@ -2712,7 +2712,7 @@
         vy:-120,
         t:1.5,
         life:1.5,
-        r:34,
+        r:58,
         hit:false
       });
     },130);
@@ -3127,10 +3127,20 @@
     }
 
     if(f.type==='beelzebub'){
-      const back=f.face>0?'left':'right';
       const forward=f.face>0?'right':'left';
-      if(kind==='punch' && hasCommand([back,'down',forward],1000)) return specialFishRaid(f);
-      if(kind==='kick' && hasCommand([back,'down',forward],1000)) return specialAbyssShock(f);
+      const downForward=f.face>0?'downRight':'downLeft';
+
+      const bossQuarterCommand =
+        hasCommand(['down',forward],850) ||
+        hasCommand(['down',downForward],850) ||
+        hasCommand([downForward,forward],850);
+
+      if(kind==='punch' && bossQuarterCommand){
+        return specialFishRaid(f);
+      }
+      if(kind==='kick' && bossQuarterCommand){
+        return specialAbyssShock(f);
+      }
     }
 
     return false;
@@ -4156,7 +4166,7 @@ function drawBackground(dt){
         w.t-=dt;
         w.x+=w.vx*dt;
         w.y+=w.vy*dt;
-        w.r+=18*dt;
+        w.r+=42*dt;
         const target=w.owner && w.owner.isPlayer ? enemy : player;
         if(!w.hit && target && Math.hypot(target.x-w.x,target.y-w.y)<target.radius+w.r){
           w.hit=true;
@@ -4437,15 +4447,15 @@ function drawBackground(dt){
       ctx.globalCompositeOperation='lighter';
       ctx.globalAlpha=.55*a;
       ctx.strokeStyle='#d9ff8a';
-      ctx.lineWidth=10;
+      ctx.lineWidth=16;
       ctx.beginPath();
-      ctx.arc(0,0,w.r,-1.0,1.0);
+      ctx.arc(0,0,w.r,-1.08,1.08);
       ctx.stroke();
       ctx.globalAlpha=.28*a;
       ctx.strokeStyle='#8fff2c';
-      ctx.lineWidth=22;
+      ctx.lineWidth=34;
       ctx.beginPath();
-      ctx.arc(0,0,w.r*.82,-1.05,1.05);
+      ctx.arc(0,0,w.r*.84,-1.12,1.12);
       ctx.stroke();
       ctx.restore();
     });
