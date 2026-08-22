@@ -412,11 +412,11 @@
   function fighterPalette(type){
     if(type==='kawazu'){
       return {
-        body:'#55bd54',
-        limb:'#f06a32',
-        light:'#8bdc68',
-        belly:'#f1d7ad',
-        eyeBump:'#f04d2d'
+        body:'#4fbd55',
+        limb:'#4aaf50',
+        light:'#82d96d',
+        belly:'#f4f1e8',
+        eyeBump:'#5bc45b'
       };
     }
 
@@ -1153,6 +1153,30 @@
       ctx.ellipse(2,36,19,23,0,0,Math.PI*2);
       ctx.fill();
 
+      if(this.type==='kawazu'){
+        // 参考のアカメアマガエル風：胴体の左右に青い差し色
+        ctx.save();
+        ctx.fillStyle='#2e76b8';
+        ctx.globalAlpha=.88;
+
+        ctx.beginPath();
+        ctx.ellipse(-23,31,8,25,-.18,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(23,31,8,25,.18,0,Math.PI*2);
+        ctx.fill();
+
+        // 青と緑の境目に少し暗い青
+        ctx.fillStyle='#24558d';
+        ctx.globalAlpha=.72;
+        ctx.beginPath();
+        ctx.ellipse(-26,34,4,19,-.18,0,Math.PI*2);
+        ctx.ellipse(26,34,4,19,.18,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       // ニュートラル脚：横に開かず、胴体の下に軽くたたむ。
       // キック中は前脚をここでは描かず、攻撃ポーズ側で差し替える。
       ctx.strokeStyle=pal.limb;
@@ -1177,6 +1201,29 @@
           ctx.moveTo(23,22); ctx.lineTo(32,35);
         }
         ctx.stroke();
+      }
+
+      if(this.type==='kawazu'){
+        // 腕脚そのものは緑。先端だけオレンジにする。
+        ctx.save();
+        ctx.fillStyle='#ff7a2f';
+
+        // 足先
+        ctx.beginPath();
+        ctx.ellipse(-29,67,10,7,-.18,0,Math.PI*2);
+        ctx.ellipse(29,67,10,7,.18,0,Math.PI*2);
+        ctx.fill();
+
+        // 手先
+        if(!this.guard && this.attack!=='wave'){
+          ctx.beginPath();
+          ctx.ellipse(-33,36,8,6,-.25,0,Math.PI*2);
+          if(this.attack!=='punch'){
+            ctx.ellipse(33,36,8,6,.25,0,Math.PI*2);
+          }
+          ctx.fill();
+        }
+        ctx.restore();
       }
 
       // リリスさん：右目の後ろに斜め付けした蝶結びリボン
@@ -1298,12 +1345,26 @@
         ctx.fill();
 
         if(this.type==='kawazu'){
-          ctx.strokeStyle='#ff6a22';
-          ctx.lineWidth=4;
+          // 白目は白のまま。赤い部分は虹彩だけ。
+          ctx.fillStyle='#e62d24';
           ctx.beginPath();
-          ctx.arc(-19,-30,7,0,Math.PI*2);
-          ctx.arc(19,-30,7,0,Math.PI*2);
-          ctx.stroke();
+          ctx.arc(-19,-30,7.2,0,Math.PI*2);
+          ctx.arc(19,-30,7.2,0,Math.PI*2);
+          ctx.fill();
+
+          // 赤い虹彩の内側に黒い縦長の瞳孔
+          ctx.fillStyle='#151515';
+          ctx.beginPath();
+          ctx.ellipse(-19,-30,2.8,5.3,0,0,Math.PI*2);
+          ctx.ellipse(19,-30,2.8,5.3,0,0,Math.PI*2);
+          ctx.fill();
+
+          // 小さな光
+          ctx.fillStyle='rgba(255,255,255,.88)';
+          ctx.beginPath();
+          ctx.arc(-21,-33,1.6,0,Math.PI*2);
+          ctx.arc(17,-33,1.6,0,Math.PI*2);
+          ctx.fill();
         }
       }
 
@@ -1356,6 +1417,18 @@
         ctx.stroke();
         ctx.restore();
 
+        if(this.type==='kawazu'){
+          ctx.save();
+          ctx.fillStyle='#ff7a2f';
+          let kx=59, ky=8;
+          if(this.specialType==='kawazuPressureRush'){kx=58;ky=8;}
+          else if(this.attackVariant==='up'){kx=48;ky=-22;}
+          ctx.beginPath();
+          ctx.ellipse(kx,ky,9,6,0,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+
         if(this.specialType==='uppercut' && this.specialT<=.54 && this.specialT>=.08){
           drawBurningAura(48,-22,13,18,-.35);
         }
@@ -1377,6 +1450,17 @@
         }
         ctx.stroke();
         ctx.restore();
+
+        if(this.type==='kawazu'){
+          ctx.save();
+          ctx.fillStyle='#ff7a2f';
+          const ky=this.attackVariant==='down'?78:48;
+          const kx=this.attackVariant==='down'?52:60;
+          ctx.beginPath();
+          ctx.ellipse(kx,ky,10,7,0,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
 
       if(this.specialType==='lilithBackSpin'){
