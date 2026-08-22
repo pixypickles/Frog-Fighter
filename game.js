@@ -915,20 +915,15 @@
         ctx.stroke();
 
           if(this.type==='crayfish' && this.specialType==='crayfishCounter'){
-          // 両腕を左右へ大きく開いたカウンター構え
+          // 待機中は通常の腕をそのまま使い、両目だけ赤く発光。
           ctx.save();
-          ctx.strokeStyle='#a94331';
-          ctx.lineWidth=11;
-          ctx.lineCap='round';
+          ctx.globalCompositeOperation='lighter';
+          ctx.fillStyle='#ff2a20';
+          ctx.shadowColor='#ff1d12';
+          ctx.shadowBlur=13;
           ctx.beginPath();
-          ctx.moveTo(18,2); ctx.lineTo(68,-6);
-          ctx.moveTo(-18,2); ctx.lineTo(-68,-6);
-          ctx.stroke();
-
-          ctx.fillStyle='#c95b40';
-          ctx.beginPath();
-          ctx.ellipse(76,-6,19,14,.12,0,Math.PI*2);
-          ctx.ellipse(-76,-6,19,14,-.12,0,Math.PI*2);
+          ctx.arc(-14,-25,6.5,0,Math.PI*2);
+          ctx.arc(14,-25,6.5,0,Math.PI*2);
           ctx.fill();
           ctx.restore();
         }
@@ -1954,7 +1949,7 @@
       ],
       orange:[
         'スティック1回転 ＋ ガード：ホワイトカウンター',
-        '← → ＋ ガード→パンチ：ガーディアンタックル',
+        '← → ＋ ガード：ガーディアンタックル',
         'ガード長押し→離す：ホワイトオーラ（長押し時間に応じて維持）',
         'ホワイトオーラ中 パンチ／キック：白いリーチ約3倍攻撃'
       ],
@@ -2990,10 +2985,6 @@
       }
     }
 
-    if(f.type==='orange' && kind==='punch' && f.tackleArmedT>0){
-      return specialUrielTackle(f);
-    }
-
     return false;
   }
 
@@ -3405,16 +3396,16 @@
             if(specialWhiteCounter(player)){btn.classList.remove('pressed');return;}
           }
 
-          // ウリエルさん：後ろ→前→ガードでタックルを準備。続けてパンチ。
+          // ウリエルさん：後ろ→前→ガードだけでガーディアンタックル発動。
           if(player.type==='orange' && !player.throwState){
             const back=player.face>0?'left':'right';
             const forward=player.face>0?'right':'left';
             if(hasCommand([back,forward],820)){
               clearCommand();
-              armUrielTackle(player);
-              player.guard=true;
-              player.guardStartT=.18;
-              return;
+              if(specialUrielTackle(player)){
+                btn.classList.remove('pressed');
+                return;
+              }
             }
           }
 
