@@ -709,6 +709,10 @@
       ctx.translate(this.x,this.y);
       const pal=fighterPalette(this.type);
 
+      if(this.specialType==='burningCyclone'){
+        ctx.rotate(burningCycloneAngle(this));
+      }
+
 
       // ピラニア：リヴァイアサンさん
       if(this.type==='piranha'){
@@ -1204,6 +1208,30 @@
           // パンチが伸びた先で炸裂。
           drawRedAura(64,7,23,19,intensity);
         }
+      }
+
+      if(this.type==='green' && this.specialType==='burningCyclone'){
+        // 高速回転中は両足それぞれに赤いオーラ
+        drawBurningAura(-17,52,18,13,-.15);
+        drawBurningAura(17,52,18,13,.15);
+      }
+
+      if(this.type==='yellow' && this.specialType==='raphaelBubbleMove'){
+        // 全身を泡で包む。高速移動中は飛び道具無効。
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=.32;
+        ctx.fillStyle='#d8fbff';
+        ctx.beginPath();
+        ctx.ellipse(0,22,53,67,0,0,Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha=.72;
+        ctx.strokeStyle='#efffff';
+        ctx.lineWidth=4;
+        ctx.beginPath();
+        ctx.ellipse(0,22,53,67,0,0,Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
       }
 
       // ラファエルさん：回復中は小さな泡が身体の周囲を上昇
@@ -1817,7 +1845,8 @@
     const map={
       green:[
         '↓ ↑ ＋ パンチ：バーニングアッパー',
-        '↓ → ＋ キック：バーニングキック'
+        '↓ → ＋ キック：バーニングキック',
+        '時計回り1回転 ＋ キック：バーニングサイクロン（敵が右の場合）'
       ],
       blue:[
         '↙ ↗ ＋ パンチ：アクアトルネード',
@@ -1833,8 +1862,11 @@
         '後ろ ＋ ガード×2：ナマズ突進'
       ],
       yellow:[
-        '↓ → ＋ パンチ：水圧カッター',
-        '後ろ ＋ ガード×2：ヒーリングバブル'
+        '↓ → ＋ 舌：水圧カッター（真横）',
+        '↓ → ＋ パンチ：水圧カッター（約30°上）',
+        '↓ → ＋ キック：水圧カッター（約30°下）',
+        '後ろ ＋ ガード×2：ヒーリングバブル',
+        '反時計回り1回転 ＋ ガード：高速バブル移動（敵が右の場合）'
       ],
       orange:[
         'スティック1回転 ＋ ガード：ホワイトカウンター',
@@ -2003,6 +2035,13 @@
       z.push({owner:f,x:fx(48),y:f.y-22,r:30});
     if(f.type==='green' && f.specialType==='dropkick' && f.specialT<=.475 && f.specialT>=.06)
       z.push({owner:f,x:fx(61),y:f.y+39,r:34});
+    if(f.type==='green' && f.specialType==='burningCyclone'){
+      const ang=burningCycloneAngle(f);
+      const a=rotatePoint(-17,52,ang);
+      const b=rotatePoint(17,52,ang);
+      z.push({owner:f,x:f.x+a.x,y:f.y+a.y,r:28});
+      z.push({owner:f,x:f.x+b.x,y:f.y+b.y,r:28});
+    }
 
     if(f.type==='black' && f.specialType==='hellCrashFinish')
       z.push({owner:f,x:fx(48),y:f.y-38,r:34});
@@ -2347,6 +2386,29 @@
     return true;
   }
 
+  function specialBurningCyclone(f){
+    if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
+
+    f.specialType='burningCyclone';
+    f.specialT=1.02;
+    f.attack='kick';
+    f.attackT=1.02;
+    f.cycloneLastHitA=-9999;
+    f.cycloneLastHitB=-9999;
+    f.cycloneStartTime=performance.now();
+
+    // 高速回転しながら相手方向へ突進
+    f.vx+=f.face*510;
+    f.vy*=.18;
+
+    comboEl.textContent='バーニングサイクロン!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='バーニングサイクロン!') comboEl.textContent='';
+    },820);
+    clearCommand();
+    return true;
+  }
+
   function specialUppercut(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
@@ -2526,21 +2588,63 @@
     return true;
   }
 
-  function specialPressureBlade(f){
+  function specialPressureBlade(f,angleDeg=0,source='punch'){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0) return false;
-    f.specialType='pressureBlade'; f.specialT=.42; f.attack='punch'; f.attackT=.42;
+
+    f.specialType='pressureBlade';
+    f.specialT=.42;
+    f.attack=source==='kick' ? 'kick' : (source==='punch' ? 'punch' : null);
+    f.attackT=.42;
+
+    const speed=350;
+    const rad=angleDeg*Math.PI/180;
+    const yOffset=source==='punch' ? -10 : (source==='kick' ? 28 : 2);
+
     pressureBlades.push({
       owner:f,
-      x:f.x+f.face*72,
-      y:f.y,
-      vx:f.face*340,
-      t:1.20,
-      life:1.20,
+      x:f.x+f.face*68,
+      y:f.y+yOffset,
+      vx:f.face*Math.cos(rad)*speed,
+      vy:Math.sin(rad)*speed,
+      t:1.25,
+      life:1.25,
       hit:false,
-      size:1.0
+      size:1.0,
+      angle:rad
     });
+
     comboEl.textContent='水圧カッター!';
     setTimeout(()=>{if(comboEl.textContent==='水圧カッター!')comboEl.textContent='';},900);
+    return true;
+  }
+
+  function specialRaphaelBubbleMove(f){
+    if(gameOver || f.stun>0 || f.throwState || f.specialT>0) return false;
+
+    f.guard=false;
+    f.specialType='raphaelBubbleMove';
+    f.specialT=.92;
+    f.attack=null;
+    f.attackT=0;
+    f.raphaelMoveElapsed=0;
+    f.raphaelMoveDuration=.82;
+    f.raphaelMoveStartX=f.x;
+    f.raphaelMoveStartY=f.y;
+
+    // 最初は斜め後ろ下へ、そこから大きく回り込んで前下へ。
+    const dir=f.face;
+    f.raphaelMoveControlX=f.x-dir*Math.min(180,innerWidth*.18);
+    f.raphaelMoveControlY=Math.min(innerHeight-70,f.y+Math.min(180,innerHeight*.30));
+    f.raphaelMoveEndX=dir>0 ? innerWidth-90 : 90;
+    f.raphaelMoveEndY=innerHeight-92;
+    f.vx=0;
+    f.vy=0;
+
+    comboEl.textContent='高速バブル移動!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='高速バブル移動!') comboEl.textContent='';
+    },720);
+    clearCommand();
     return true;
   }
 
@@ -2550,6 +2654,31 @@
     comboEl.textContent='ヒーリングバブル!';
     setTimeout(()=>{if(comboEl.textContent==='ヒーリングバブル!')comboEl.textContent='';},720);
     return true;
+  }
+
+  function hasFacingCircle(f, clockwiseWhenFacingRight=true, maxMs=1100){
+    if(!f) return false;
+    const now=performance.now();
+    const hist=input.commandHistory
+      .filter(v=>now-v.time<=maxMs)
+      .map(v=>v.dir);
+
+    // 画面座標では下が正なので、この並びが時計回り。
+    const cw=['right','downRight','down','downLeft','left','upLeft','up','upRight'];
+    const ccw=['right','upRight','up','upLeft','left','downLeft','down','downRight'];
+
+    // 左向き時はコマンドを鏡映しにする。
+    const wantCw = f.face>0 ? clockwiseWhenFacingRight : !clockwiseWhenFacingRight;
+    const seq=wantCw ? cw : ccw;
+
+    for(let start=0;start<8;start++){
+      let p=0;
+      for(const d of hist){
+        if(d===seq[(start+p)%8]) p++;
+        if(p>=7) return true;
+      }
+    }
+    return false;
   }
 
   function hasFullCircle(maxMs=900){
@@ -2631,6 +2760,10 @@
     if(!f) return false;
 
     if(f.type==='green'){
+      if(kind==='kick' && hasFacingCircle(f,true,1100)){
+        return specialBurningCyclone(f);
+      }
+
       if(kind==='punch' && hasCommand(['down','up'],720)){
         clearCommand();
         return specialUppercut(f);
@@ -2693,16 +2826,16 @@
       const forward=f.face>0?'right':'left';
       const downForward=f.face>0?'downRight':'downLeft';
 
-      if(
-        kind==='punch' &&
-        (
-          hasCommand(['down',forward],900) ||
-          hasCommand(['down',downForward],900) ||
-          hasCommand([downForward,forward],900)
-        )
-      ){
+      const pressureCommand =
+        hasCommand(['down',forward],900) ||
+        hasCommand(['down',downForward],900) ||
+        hasCommand([downForward,forward],900);
+
+      if(pressureCommand && (kind==='tongue' || kind==='punch' || kind==='kick')){
         clearCommand();
-        return specialPressureBlade(f);
+        if(kind==='tongue') return specialPressureBlade(f,0,'tongue');
+        if(kind==='punch') return specialPressureBlade(f,-30,'punch');
+        return specialPressureBlade(f,30,'kick');
       }
     }
 
@@ -3031,6 +3164,14 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          // ラファエルさん：敵が右なら反時計回り1回転＋ガードで高速バブル移動
+          if(player.type==='yellow' && !player.throwState && hasFacingCircle(player,false,1150)){
+            if(specialRaphaelBubbleMove(player)){
+              btn.classList.remove('pressed');
+              return;
+            }
+          }
+
           // ラファエルさん：後ろ＋ガード×2で徐々に回復
           if(player.type==='yellow' && !player.throwState){
             const now=performance.now();
@@ -3297,6 +3438,75 @@
     b.x=Math.max(margin,Math.min(innerWidth-margin,b.x));
   }
 
+  function rotatePoint(x,y,a){
+    const ca=Math.cos(a), sa=Math.sin(a);
+    return {x:x*ca-y*sa,y:x*sa+y*ca};
+  }
+
+  function burningCycloneAngle(f){
+    if(!f || f.specialType!=='burningCyclone') return 0;
+    const elapsed=(performance.now()-(f.cycloneStartTime||performance.now()))/1000;
+    // 右向きは時計回り、左向きは鏡映し
+    return elapsed*22*(f.face>0?1:-1);
+  }
+
+  function updateNewSpecialMoves(f,dt){
+    if(!f) return;
+
+    if(f.specialType==='burningCyclone'){
+      const other=f.isPlayer?enemy:player;
+      const ang=burningCycloneAngle(f);
+
+      // 突進速度を維持
+      if(Math.abs(f.vx)<350) f.vx+=f.face*220*dt;
+
+      if(other){
+        const feet=[
+          {localX:-17,localY:52,key:'cycloneLastHitA'},
+          {localX: 17,localY:52,key:'cycloneLastHitB'}
+        ];
+        const now=performance.now();
+
+        feet.forEach(foot=>{
+          const p=rotatePoint(foot.localX,foot.localY,ang);
+          const wx=f.x+p.x, wy=f.y+p.y;
+          if(
+            Math.hypot(other.x-wx,other.y-wy)<other.radius+22 &&
+            now-(f[foot.key]||-9999)>72
+          ){
+            f[foot.key]=now;
+            // 超多段用の小ダメージ
+            damageHit(f,other,.62*f.damageMul,16*f.face,-2);
+          }
+        });
+      }
+    }
+
+    if(f.specialType==='raphaelBubbleMove'){
+      f.raphaelMoveElapsed=(f.raphaelMoveElapsed||0)+dt;
+      const dur=f.raphaelMoveDuration||.82;
+      const t=Math.max(0,Math.min(1,f.raphaelMoveElapsed/dur));
+      const u=1-t;
+
+      // 2次ベジェ：斜め後ろ下へ膨らみ、前下へぐるっと回り込む
+      f.x=
+        u*u*f.raphaelMoveStartX+
+        2*u*t*f.raphaelMoveControlX+
+        t*t*f.raphaelMoveEndX;
+      f.y=
+        u*u*f.raphaelMoveStartY+
+        2*u*t*f.raphaelMoveControlY+
+        t*t*f.raphaelMoveEndY;
+
+      f.vx=0;
+      f.vy=0;
+    }
+  }
+
+  function projectileImmuneByBubble(f){
+    return !!(f && f.specialType==='raphaelBubbleMove' && f.specialT>0);
+  }
+
 function drawBackground(dt){
     const themes=[
       {top:'#42c7d6',mid:'#10849a',bottom:'#075469',floor:'#075047',plant:'#16855f',shaft:'rgba(255,255,220,.07)'},
@@ -3365,6 +3575,10 @@ function drawBackground(dt){
       }
       enemyAI(dt);
       player.update(dt);enemy.update(dt);
+      updateNewSpecialMoves(player,dt);
+      updateNewSpecialMoves(enemy,dt);
+      updateNewSpecialMoves(player,dt);
+      updateNewSpecialMoves(enemy,dt);
 
       // v6.5: フリー対戦／ストーリーだけ、上下位置が近い時に横へ押し分ける。
       if(gameMode==='battle' || gameMode==='story'){
@@ -3467,21 +3681,27 @@ function drawBackground(dt){
           const now=performance.now();
           if(d<target.radius+v.r && now-v.lastHitAt>260){
             v.lastHitAt=now;
-            damageHit(v.owner,target,1.15*v.owner.damageMul,26*v.owner.face,-8);
+            if(projectileImmuneByBubble(target)){
+              spawnImpact(target.x,target.y,'guard');
+            }else{
+              damageHit(v.owner,target,1.15*v.owner.damageMul,26*v.owner.face,-8);
+            }
           }
         }
       });
       aquaVortices=aquaVortices.filter(v=>v.t>0);
 
       pressureBlades.forEach(p=>{
-        p.t-=dt; p.x+=p.vx*dt;
+        p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
         if(!p.hit && target){
           const d=Math.hypot(target.x-p.x,target.y-p.y);
           if(d<target.radius+28){
             p.hit=true;
             // ウリエルのカウンター構えは飛び道具を無効化。反撃は発生させない。
-            if(target.type==='orange' && target.counterReady){
+            if(projectileImmuneByBubble(target)){
+              spawnImpact(p.x,p.y,'guard');
+            }else if(target.type==='orange' && target.counterReady){
               spawnImpact(p.x,p.y,'guard');
             }else{
               damageHit(p.owner,target,5.2*p.owner.damageMul,105*p.owner.face,-18);
@@ -3540,7 +3760,11 @@ function drawBackground(dt){
           // 水流全体が当たり判定
           if(d < target.radius + t.width){
             t.hit=true;
-            damageHit(owner,target,7.0*owner.damageMul,125*owner.face,-125);
+            if(projectileImmuneByBubble(target)){
+              spawnImpact(target.x,target.y,'guard');
+            }else{
+              damageHit(owner,target,7.0*owner.damageMul,125*owner.face,-125);
+            }
           }
         }
       });
@@ -3551,7 +3775,11 @@ function drawBackground(dt){
         const target=n.target;
         if(!n.hit && target && Math.hypot(target.x-(n.x+Math.sign(n.vx)*55),target.y-n.y)<target.radius+72){
           n.hit=true;
-          damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
+          if(projectileImmuneByBubble(target)){
+            spawnImpact(target.x,target.y,'guard');
+          }else{
+            damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
+          }
         }
       });
       catfishCharges=catfishCharges.filter(n=>n.t>0);
@@ -3709,6 +3937,7 @@ function drawBackground(dt){
       ctx.save();
       ctx.translate(p.x,p.y);
       if(p.vx<0) ctx.scale(-1,1);
+      ctx.rotate(Math.atan2(p.vy||0,Math.abs(p.vx||1)));
 
       ctx.globalCompositeOperation='lighter';
 
