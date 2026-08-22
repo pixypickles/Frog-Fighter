@@ -4666,7 +4666,8 @@ function drawBackground(dt){
             endRaceMiniGame();
           }
         }
-        // v6.40: 楕円の中央は通行禁止。リング状のコース内だけ走れる。
+        // v6.41: リング境界では停止させず、接線方向へ滑らせる。
+        // これにより楕円の端（見た目上の「角」）で引っ掛からない。
         {
           const xs=raceCheckpoints.map(p=>p.x), ys=raceCheckpoints.map(p=>p.y);
           const rcx=(Math.min(...xs)+Math.max(...xs))/2, rcy=(Math.min(...ys)+Math.max(...ys))/2;
@@ -4674,25 +4675,36 @@ function drawBackground(dt){
           const laneHalf=48;
           const keepOnRing=(f)=>{
             if(!f)return;
-            let nx=(f.x-rcx)/Math.max(1,rrx-laneHalf);
-            let ny=(f.y-rcy)/Math.max(1,rry-laneHalf);
-            const inner=Math.sqrt(nx*nx+ny*ny);
-            if(inner<1){
-              const a=Math.atan2((f.y-rcy)/rry,(f.x-rcx)/rrx);
-              f.x=rcx+Math.cos(a)*(rrx-laneHalf);
-              f.y=rcy+Math.sin(a)*(rry-laneHalf);
-              // 中央へ向かう速度を弱く跳ね返す
-              const ux=Math.cos(a),uy=Math.sin(a);
-              const dot=f.vx*ux+f.vy*uy;
-              if(dot<0){f.vx-=dot*1.35*ux;f.vy-=dot*1.35*uy;}
-            }
-            nx=(f.x-rcx)/Math.max(1,rrx+laneHalf);
-            ny=(f.y-rcy)/Math.max(1,rry+laneHalf);
-            const outer=Math.sqrt(nx*nx+ny*ny);
-            if(outer>1){
-              const a=Math.atan2((f.y-rcy)/rry,(f.x-rcx)/rrx);
-              f.x=rcx+Math.cos(a)*(rrx+laneHalf);
-              f.y=rcy+Math.sin(a)*(rry+laneHalf);
+            const dx=f.x-rcx, dy=f.y-rcy;
+            const a=Math.atan2(dy/Math.max(1,rry),dx/Math.max(1,rrx));
+            const ca=Math.cos(a), sa=Math.sin(a);
+            const innerRx=Math.max(24,rrx-laneHalf), innerRy=Math.max(24,rry-laneHalf);
+            const outerRx=rrx+laneHalf, outerRy=rry+laneHalf;
+            const qInner=(dx*dx)/(innerRx*innerRx)+(dy*dy)/(innerRy*innerRy);
+            const qOuter=(dx*dx)/(outerRx*outerRx)+(dy*dy)/(outerRy*outerRy);
+
+            // 楕円の接線ベクトル。境界に当たった時は進行成分をこちらへ残す。
+            let tx=-innerRx*sa, ty=innerRy*ca;
+            const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+
+            if(qInner<1){
+              // 内周に少しだけ余白を持たせ、めり込みを一発で解消
+              f.x=rcx+ca*(innerRx+3);
+              f.y=rcy+sa*(innerRy+3);
+              const tang=f.vx*tx+f.vy*ty;
+              const speed=Math.max(1.2,Math.hypot(f.vx,f.vy)*0.92);
+              const sign=Math.abs(tang)>.08?Math.sign(tang):1;
+              f.vx=tx*speed*sign; f.vy=ty*speed*sign;
+            }else if(qOuter>1){
+              // 外周でも同様に、壁に止めずコース沿いへ滑らせる
+              f.x=rcx+ca*(outerRx-3);
+              f.y=rcy+sa*(outerRy-3);
+              tx=-outerRx*sa; ty=outerRy*ca;
+              const otl=Math.hypot(tx,ty)||1; tx/=otl; ty/=otl;
+              const tang=f.vx*tx+f.vy*ty;
+              const speed=Math.max(1.2,Math.hypot(f.vx,f.vy)*0.92);
+              const sign=Math.abs(tang)>.08?Math.sign(tang):1;
+              f.vx=tx*speed*sign; f.vy=ty*speed*sign;
             }
           };
           keepOnRing(player); keepOnRing(enemy);
