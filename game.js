@@ -379,6 +379,8 @@
       this.crayfishSmashDone=false;
       this.crayfishSmashQueued=false;
       this.crayfishSmashQueueT=0;
+      this.crayfishCounterReady=false;
+      this.crayfishCounterT=0;
       this.luciferGrabTarget=null;
       this.luciferGrabT=0;
       this.luciferRushHits=0;
@@ -527,6 +529,18 @@
           this.specialType=null;
           this.specialT=0;
           comboEl.textContent='';
+        }
+      }
+
+      if(this.type==='crayfish' && this.crayfishCounterT>0){
+        this.crayfishCounterT-=dt;
+        if(this.crayfishCounterT<=0){
+          this.crayfishCounterT=0;
+          this.crayfishCounterReady=false;
+          if(this.specialType==='crayfishCounter'){
+            this.specialType=null;
+            this.specialT=0;
+          }
         }
       }
 
@@ -900,7 +914,45 @@
         ctx.moveTo(-2,-28); ctx.quadraticCurveTo(-31,-49,-51,-37);
         ctx.stroke();
 
-        // ボトムスマッシュ時は両ハサミを下へ
+          if(this.type==='crayfish' && this.specialType==='crayfishCounter'){
+          // 両腕を左右へ大きく開いたカウンター構え
+          ctx.save();
+          ctx.strokeStyle='#a94331';
+          ctx.lineWidth=11;
+          ctx.lineCap='round';
+          ctx.beginPath();
+          ctx.moveTo(18,2); ctx.lineTo(68,-6);
+          ctx.moveTo(-18,2); ctx.lineTo(-68,-6);
+          ctx.stroke();
+
+          ctx.fillStyle='#c95b40';
+          ctx.beginPath();
+          ctx.ellipse(76,-6,19,14,.12,0,Math.PI*2);
+          ctx.ellipse(-76,-6,19,14,-.12,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if(this.type==='crayfish' && this.specialType==='crayfishCounterHit'){
+          // 反撃は両腕を上から振り下ろす
+          ctx.save();
+          ctx.strokeStyle='#a94331';
+          ctx.lineWidth=12;
+          ctx.lineCap='round';
+          ctx.beginPath();
+          ctx.moveTo(18,0); ctx.lineTo(54,46);
+          ctx.moveTo(-18,0); ctx.lineTo(-48,43);
+          ctx.stroke();
+
+          ctx.fillStyle='#d36a4c';
+          ctx.beginPath();
+          ctx.ellipse(61,48,20,15,.2,0,Math.PI*2);
+          ctx.ellipse(-55,45,20,15,-.2,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+      // ボトムスマッシュ時は両ハサミを下へ
         if(this.specialType==='crayfishBottomSmash'){
           ctx.strokeStyle='#7a2f24';
           ctx.lineWidth=12;
@@ -1895,9 +1947,8 @@
         '後ろ ＋ キック：バックスピンキック（キック追加入力で追加回転）'
       ],
       yellow:[
-        '↓ → ＋ 舌：水圧カッター（真横）',
-        '↓ → ＋ パンチ：水圧カッター（約30°上）',
-        '↓ → ＋ キック：水圧カッター（約30°下）',
+        '↓ → ＋ パンチ：水圧カッター（真横）',
+        '↓ → ＋ キック：水圧カッター（約15°下）',
         '後ろ ＋ ガード×2：ヒーリングバブル',
         '反時計回り1回転 ＋ ガード：高速バブル移動（敵が右の場合）'
       ],
@@ -1914,7 +1965,8 @@
       ],
       crayfish:[
         'パンチ×3：クローラッシュ',
-        '↓ ↓ ＋ キック：ボトムスマッシュ'
+        '↓ ↓ ＋ キック：ボトムスマッシュ',
+        '↓ ＋ ガード×2：クロー・カウンター'
       ],
       beelzebub:[
         'BOSS専用技：準備中'
@@ -2535,6 +2587,52 @@
   }
 
 
+  function specialCrayfishCounter(f){
+    if(gameOver || f.stun>0 || f.throwState || f.specialT>0) return false;
+    f.guard=false;
+    f.attack=null;
+    f.attackT=0;
+    f.specialType='crayfishCounter';
+    f.specialT=1.15;
+    f.crayfishCounterReady=true;
+    f.crayfishCounterT=1.15;
+    comboEl.textContent='クロー・カウンター!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='クロー・カウンター!') comboEl.textContent='';
+    },720);
+    clearCommand();
+    return true;
+  }
+
+  function triggerCrayfishCounter(f,attacker){
+    if(!f || !f.crayfishCounterReady || !attacker) return false;
+
+    f.crayfishCounterReady=false;
+    f.crayfishCounterT=0;
+    f.specialType='crayfishCounterHit';
+    f.specialT=.52;
+    f.attack='punch';
+    f.attackT=.52;
+
+    attacker.stun=Math.max(attacker.stun,.44);
+    attacker.attackT=Math.max(attacker.attackT,.30);
+
+    setTimeout(()=>{
+      if(gameOver || !f || !attacker) return;
+      // 両腕を広げた構えから、一気に振り下ろす
+      damageHit(f,attacker,9.0*f.damageMul,150*f.face,115);
+      attacker.hurtFace='both';
+      attacker.hurtFaceT=.55;
+    },110);
+
+    comboEl.textContent='COUNTER!';
+    setTimeout(()=>{
+      if(comboEl.textContent==='COUNTER!') comboEl.textContent='';
+    },520);
+
+    return true;
+  }
+
   function specialCrayfishRush(f){
     if(gameOver || f.stun>0 || f.specialT>0) return false;
     f.specialType='crayfishRush';
@@ -2885,11 +2983,10 @@
         hasCommand(['down',downForward],900) ||
         hasCommand([downForward,forward],900);
 
-      if(pressureCommand && (kind==='tongue' || kind==='punch' || kind==='kick')){
+      if(pressureCommand && (kind==='punch' || kind==='kick')){
         clearCommand();
-        if(kind==='tongue') return specialPressureBlade(f,0,'tongue');
-        if(kind==='punch') return specialPressureBlade(f,-30,'punch');
-        return specialPressureBlade(f,30,'kick');
+        if(kind==='punch') return specialPressureBlade(f,0,'punch');
+        return specialPressureBlade(f,15,'kick');
       }
     }
 
@@ -3118,6 +3215,25 @@
   }
 
   function damageHit(attacker,target,dmg,kx,ky,bypassCounter=false){
+    // アスモデウスさんのクロー・カウンター：
+    // 近距離打撃だけ無効化。飛び道具は普通に受ける。
+    if(target && target.type==='crayfish' && target.crayfishCounterReady && attacker){
+      const projectileLike =
+        attacker._projectileHit===true ||
+        attacker.specialType==='pressureBlade' ||
+        attacker.specialType==='aquaTornado' ||
+        attacker.specialType==='aquaStream' ||
+        attacker.specialType==='aquaVortex';
+
+      const closeEnough=Math.hypot(attacker.x-target.x,attacker.y-target.y)<135;
+
+      if(!projectileLike && closeEnough){
+        triggerCrayfishCounter(target,attacker);
+        spawnImpact(target.x,target.y,'guard');
+        return;
+      }
+    }
+
     if(gameOver) return;
 
     // ウリエルさんのカウンター構え：打撃を無効化して白オーラ拳で反撃。
@@ -3244,6 +3360,24 @@
       e.preventDefault();btn.classList.add('pressed');
       if(action==='guard'){
         if(player){
+          // アスモデウスさん：下＋ガード×2で近距離カウンター構え
+          if(player.type==='crayfish' && !player.throwState){
+            const now=performance.now();
+            const downNow=input.y>.35;
+            input._crayGuardTimes=(input._crayGuardTimes||[]).filter(t=>now-t<760);
+
+            if(downNow){
+              input._crayGuardTimes.push(now);
+              if(input._crayGuardTimes.length>=2){
+                input._crayGuardTimes=[];
+                if(specialCrayfishCounter(player)){
+                  btn.classList.remove('pressed');
+                  return;
+                }
+              }
+            }
+          }
+
           // ラファエルさん：敵が右なら反時計回り1回転＋ガードで高速バブル移動
           if(player.type==='yellow' && !player.throwState && hasFacingCircle(player,false,1150)){
             if(specialRaphaelBubbleMove(player)){
@@ -3798,7 +3932,9 @@ function drawBackground(dt){
             if(projectileImmuneByBubble(target)){
               spawnImpact(target.x,target.y,'guard');
             }else{
+              v.owner._projectileHit=true;
               damageHit(v.owner,target,1.15*v.owner.damageMul,26*v.owner.face,-8);
+              v.owner._projectileHit=false;
             }
           }
         }
@@ -3818,7 +3954,9 @@ function drawBackground(dt){
             }else if(target.type==='orange' && target.counterReady){
               spawnImpact(p.x,p.y,'guard');
             }else{
+              p.owner._projectileHit=true;
               damageHit(p.owner,target,5.2*p.owner.damageMul,105*p.owner.face,-18);
+              p.owner._projectileHit=false;
             }
           }
         }
@@ -3877,7 +4015,9 @@ function drawBackground(dt){
             if(projectileImmuneByBubble(target)){
               spawnImpact(target.x,target.y,'guard');
             }else{
+              owner._projectileHit=true;
               damageHit(owner,target,7.0*owner.damageMul,125*owner.face,-125);
+              owner._projectileHit=false;
             }
           }
         }
@@ -3892,7 +4032,9 @@ function drawBackground(dt){
           if(projectileImmuneByBubble(target)){
             spawnImpact(target.x,target.y,'guard');
           }else{
+            n.owner._projectileHit=true;
             damageHit(n.owner,target,7.0*n.owner.damageMul,n.vx*.42,-55);
+            n.owner._projectileHit=false;
           }
         }
       });
