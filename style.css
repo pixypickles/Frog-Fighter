@@ -1009,3 +1009,143 @@ button{font:inherit;color:inherit}
       #3f9846 52% 56%,
       transparent 57%) !important;
 }
+
+/* v6.33: カエル顔を「胴体＋飛び出した両目」に分離して描画 */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji{
+  --frog-eye-area:#fff;
+  position:absolute !important;
+  left:16px !important;
+  top:52% !important;
+  transform:translateY(-50%) !important;
+  width:86px !important;
+  height:54px !important;
+  margin:0 !important;
+  overflow:visible !important;
+  border-radius:46% 46% 50% 50% / 52% 52% 48% 48% !important;
+  background:
+    radial-gradient(circle at 27% 68%, var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 73% 68%, var(--frog-cheek) 0 7%, transparent 8%),
+    var(--frog-body) !important;
+  box-shadow:
+    inset 0 -4px 0 rgba(0,0,0,.08),
+    0 3px 6px rgba(0,0,0,.16) !important;
+  font-size:0 !important;
+}
+
+/* 目そのものを頭の外へ出す */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji::before{
+  content:"" !important;
+  position:absolute !important;
+  left:-1px !important;
+  top:-25px !important;
+  width:88px !important;
+  height:45px !important;
+  background:
+    radial-gradient(circle at 25% 50%,
+      var(--frog-iris) 0 8%,
+      var(--frog-eye-area) 9% 19%,
+      var(--frog-eye-bump) 20% 31%,
+      transparent 32%),
+    radial-gradient(circle at 75% 50%,
+      var(--frog-iris) 0 8%,
+      var(--frog-eye-area) 9% 19%,
+      var(--frog-eye-bump) 20% 31%,
+      transparent 32%) !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+
+/* 口 */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji::after{
+  content:"" !important;
+  position:absolute !important;
+  left:34% !important;
+  top:49% !important;
+  width:32% !important;
+  height:18% !important;
+  border:0 !important;
+  border-bottom:4px solid var(--frog-mouth) !important;
+  border-radius:0 0 55% 55% !important;
+  background:none !important;
+}
+
+/* カワズさんは眼球の赤い部分を「白目相当」全体に */
+#selectScreen .fighter-card[data-fighter="kawazu"] .fighter-emoji{
+  --frog-body:#4fbd55 !important;
+  --frog-eye-bump:#5bc45b !important;
+  --frog-iris:#161616 !important;
+  --frog-eye-area:#e32622 !important;
+  --frog-mouth:#245b36 !important;
+  --frog-cheek:#c5aa76 !important;
+}
+
+/* リリスさんのリボンは顔の外側へ。目用beforeを使うのでカード側に描く */
+#selectScreen .fighter-card[data-fighter="purple"]::after{
+  content:"" !important;
+  position:absolute !important;
+  left:78px !important;
+  top:34px !important;
+  width:24px !important;
+  height:14px !important;
+  background:#ef69b7 !important;
+  border:3px solid #aa347f !important;
+  border-radius:70% 18% 70% 18% !important;
+  transform:rotate(-28deg) !important;
+  box-shadow:-12px 6px 0 -2px #ef69b7 !important;
+  z-index:8 !important;
+}
+
+/* カード左側の顔スペースを固定 */
+#selectScreen .fighter-card{
+  padding-left:118px !important;
+  min-height:150px !important;
+  overflow:visible !important;
+}
+
+/* 操作練習は他のモードボタンと同じ幅に戻す。
+   案内だけ外側へ出すのでボタン自体は大きくならない。 */
+#selectScreen .mode-menu .practice-entry-wrap{
+  position:relative !important;
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  margin:0 !important;
+}
+#selectScreen .mode-menu .practice-entry-wrap #practiceBtn{
+  width:100% !important;
+  min-width:0 !important;
+  min-height:40px !important;
+  padding:8px 16px !important;
+  font-size:inherit !important;
+}
+#selectScreen .mode-menu .practice-beginner-badge{
+  position:absolute !important;
+  left:calc(100% + 8px) !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  font-size:11px !important;
+  padding:5px 8px !important;
+  white-space:nowrap !important;
+  z-index:6 !important;
+}
+
+@media (max-width:760px){
+  #selectScreen .fighter-card{
+    padding-left:102px !important;
+  }
+  #selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji{
+    left:10px !important;
+    width:78px !important;
+    height:50px !important;
+  }
+  #selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji::before{
+    width:80px !important;
+    top:-23px !important;
+  }
+  #selectScreen .mode-menu .practice-beginner-badge{
+    font-size:10px !important;
+    left:calc(100% + 6px) !important;
+  }
+}
