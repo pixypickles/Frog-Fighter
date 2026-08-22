@@ -554,3 +554,167 @@ button{font:inherit;color:inherit}
   white-space:nowrap;
   box-shadow:0 2px 0 rgba(0,0,0,.15);
 }
+
+
+/* v6.27: キャラ選択のカエル顔をOS絵文字の色相変更からCSS描画へ。
+   体色・白目・瞳を個別指定できるので、ゲーム中の配色に近づけられる。 */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji{
+  --frog-body:#39cf53;
+  --frog-eye-bump:#72e56f;
+  --frog-iris:#172a24;
+  --frog-mouth:#164a31;
+  --frog-cheek:#d9b26c;
+  position:relative;
+  display:block;
+  width:92px;
+  height:72px;
+  margin:0 auto 3px;
+  font-size:0 !important;
+  line-height:0;
+  filter:none !important;
+  border-radius:46% 46% 48% 48% / 52% 52% 46% 46%;
+  background:
+    radial-gradient(circle at 29% 20%,
+      var(--frog-iris) 0 7%,
+      #fff 8% 18%,
+      var(--frog-eye-bump) 19% 29%,
+      transparent 30%),
+    radial-gradient(circle at 71% 20%,
+      var(--frog-iris) 0 7%,
+      #fff 8% 18%,
+      var(--frog-eye-bump) 19% 29%,
+      transparent 30%),
+    radial-gradient(circle at 27% 69%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 73% 69%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    var(--frog-body);
+  box-shadow:
+    inset 0 -5px 0 rgba(0,0,0,.05),
+    0 3px 7px rgba(0,0,0,.18);
+}
+
+/* 口 */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji::after{
+  content:"";
+  position:absolute;
+  left:33%;
+  top:56%;
+  width:34%;
+  height:18%;
+  border-bottom:4px solid var(--frog-mouth);
+  border-radius:0 0 50% 50%;
+}
+
+/* キャラクターごとのゲーム内配色に寄せる */
+#selectScreen .fighter-card[data-fighter="green"] .fighter-emoji{
+  --frog-body:#35d851;
+  --frog-eye-bump:#69e86e;
+  --frog-iris:#173126;
+  --frog-mouth:#146030;
+  --frog-cheek:#d7b774;
+}
+
+#selectScreen .fighter-card[data-fighter="blue"] .fighter-emoji{
+  --frog-body:#33bfe8;
+  --frog-eye-bump:#64d8f4;
+  --frog-iris:#14372f;
+  --frog-mouth:#0d6647;
+  --frog-cheek:#8dc8b6;
+}
+
+#selectScreen .fighter-card[data-fighter="black"] .fighter-emoji{
+  --frog-body:#3a3d46;
+  --frog-eye-bump:#4d515c;
+  --frog-iris:#111;
+  --frog-mouth:#172b20;
+  --frog-cheek:#a95f70;
+}
+
+#selectScreen .fighter-card[data-fighter="purple"] .fighter-emoji{
+  --frog-body:#9850c8;
+  --frog-eye-bump:#ad65dc;
+  --frog-iris:#14312b;
+  --frog-mouth:#275a37;
+  --frog-cheek:#db64ad;
+}
+
+#selectScreen .fighter-card[data-fighter="yellow"] .fighter-emoji{
+  --frog-body:#e3cf42;
+  --frog-eye-bump:#f2df66;
+  --frog-iris:#26351c;
+  --frog-mouth:#557528;
+  --frog-cheek:#e9a761;
+}
+
+#selectScreen .fighter-card[data-fighter="orange"] .fighter-emoji{
+  --frog-body:#ef8c36;
+  --frog-eye-bump:#f6a24e;
+  --frog-iris:#26321d;
+  --frog-mouth:#6b4f1c;
+  --frog-cheek:#f1bc65;
+}
+
+#selectScreen .fighter-card[data-fighter="beelzebub"] .fighter-emoji{
+  --frog-body:#111714;
+  --frog-eye-bump:#6eff20;
+  --frog-iris:#b5ff48;
+  --frog-mouth:#70d52b;
+  --frog-cheek:#547232;
+  box-shadow:
+    0 0 12px rgba(126,255,37,.58),
+    inset 0 -5px 0 rgba(0,0,0,.16);
+}
+
+/* カワズさん：緑の顔、白目、赤い虹彩。
+   radial-gradientを1段増やして、白目まで赤くならないようにする。 */
+#selectScreen .fighter-card[data-fighter="kawazu"] .fighter-emoji{
+  --frog-body:#4fbd55;
+  --frog-eye-bump:#5bc45b;
+  --frog-mouth:#245b36;
+  --frog-cheek:#c5aa76;
+  background:
+    radial-gradient(circle at 29% 20%,
+      #151515 0 4%,
+      #df3029 5% 11%,
+      #fff 12% 20%,
+      var(--frog-eye-bump) 21% 30%,
+      transparent 31%),
+    radial-gradient(circle at 71% 20%,
+      #151515 0 4%,
+      #df3029 5% 11%,
+      #fff 12% 20%,
+      var(--frog-eye-bump) 21% 30%,
+      transparent 31%),
+    radial-gradient(circle at 27% 69%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 73% 69%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    var(--frog-body);
+}
+
+/* リリスさんだけ小さなリボンの色を顔アイコンにも足す */
+#selectScreen .fighter-card[data-fighter="purple"] .fighter-emoji::before{
+  content:"";
+  position:absolute;
+  right:-8px;
+  top:1px;
+  width:26px;
+  height:15px;
+  background:#ef69b7;
+  border:3px solid #aa347f;
+  border-radius:70% 18% 70% 18%;
+  transform:rotate(-28deg);
+  box-shadow:-13px 6px 0 -2px #ef69b7;
+}
+
+/* v6.27 override: OS emoji filters are no longer used for frog portraits. */
+#selectScreen .blue-frog,
+#selectScreen .black-frog,
+#selectScreen .purple-frog,
+#selectScreen .yellow-frog,
+#selectScreen .orange-frog,
+#selectScreen .boss-frog,
+#selectScreen .kawazu-frog{
+  filter:none !important;
+}
