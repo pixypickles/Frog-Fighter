@@ -3045,7 +3045,11 @@
       owner:f,
       t:5.4,
       life:5.4,
-      tick:0
+      tick:0,
+      // v6.34: ベルゼブブ本人を中心に毒煙が広がる。
+      originX:f.x,
+      originY:f.y,
+      seed:Math.random()*1000
     });
 
     comboEl.textContent='ヴェノム・ウォーター!';
@@ -5127,19 +5131,65 @@ function drawBackground(dt){
     }
 
     toxicWaters.forEach(v=>{
-      const a=Math.max(0,v.t/v.life);
+      // v6.34:
+      // 土煙のようにベルゼブブから紫の毒が一気に広がる。
+      // 発動直後 -> 画面がほぼ見えない濃さ -> その後は薄い毒水として残る。
+      const age=v.life-v.t;
+      const spread=Math.min(1,age/.82);
+      const denseIn=Math.min(1,age/.48);
+      const denseOut=age<1.45 ? 1 : Math.max(0,1-(age-1.45)/1.05);
+      const dense=denseIn*denseOut;
+      const linger=Math.max(0,Math.min(1,v.t/1.0));
+      const ox=Number.isFinite(v.originX)?v.originX:(v.owner?v.owner.x:innerWidth/2);
+      const oy=Number.isFinite(v.originY)?v.originY:(v.owner?v.owner.y:innerHeight/2);
+      const maxR=Math.hypot(innerWidth,innerHeight)*1.15;
+      const now=performance.now()/1000;
+
       ctx.save();
-      ctx.globalAlpha=.18+Math.min(.22,a*.22);
-      ctx.fillStyle='#7d24a8';
-      ctx.fillRect(0,0,innerWidth,innerHeight);
-      ctx.globalAlpha=.13;
-      ctx.fillStyle='#d64cff';
-      for(let i=0;i<9;i++){
-        const x=(i*137+performance.now()/18)%innerWidth;
-        const y=innerHeight*.25+((i*83)%Math.max(80,innerHeight*.65));
+
+      // 中心から外へ膨らむ巨大な紫煙。
+      const grad=ctx.createRadialGradient(ox,oy,0,ox,oy,maxR*spread);
+      grad.addColorStop(0,`rgba(91,12,119,${0.76*dense + 0.18*linger})`);
+      grad.addColorStop(.45,`rgba(119,24,157,${0.72*dense + 0.15*linger})`);
+      grad.addColorStop(.82,`rgba(159,41,196,${0.64*dense + 0.10*linger})`);
+      grad.addColorStop(1,'rgba(116,18,150,0)');
+      ctx.fillStyle=grad;
+      ctx.beginPath();
+      ctx.arc(ox,oy,maxR*spread,0,Math.PI*2);
+      ctx.fill();
+
+      // 土煙感のある塊。発生源から外側へ拡散。
+      for(let i=0;i<28;i++){
+        const ang=(i*2.3999632297)+(v.seed||0);
+        const lane=.18+((i*37)%83)/100;
+        const rr=maxR*spread*lane;
+        const wobble=Math.sin(now*1.7+i*2.1)*18;
+        const x=ox+Math.cos(ang)*rr+wobble;
+        const y=oy+Math.sin(ang)*rr*.72+Math.cos(now*1.3+i)*14;
+        const rad=38+(i%7)*13+spread*34;
+        ctx.globalAlpha=(.08+.22*dense)*Math.min(1,spread*2.4);
+        ctx.fillStyle=i%3===0?'#d84cff':(i%3===1?'#71118f':'#9d27bd');
         ctx.beginPath();
-        ctx.arc(x,y,24+(i%4)*10,0,Math.PI*2);
+        ctx.arc(x,y,rad,0,Math.PI*2);
         ctx.fill();
+      }
+
+      // 一度だけ「ほぼ見えない」ピークを作る。
+      if(dense>.05){
+        ctx.globalAlpha=.78*dense;
+        ctx.fillStyle='#4b075f';
+        ctx.fillRect(0,0,innerWidth,innerHeight);
+        ctx.globalAlpha=.25*dense;
+        ctx.fillStyle='#c83ff0';
+        ctx.fillRect(0,0,innerWidth,innerHeight);
+      }
+
+      // ピーク後は従来より薄い紫の水だけが残る。
+      const thin=Math.max(0,Math.min(1,(age-1.6)/.9))*linger;
+      if(thin>0){
+        ctx.globalAlpha=.15*thin;
+        ctx.fillStyle='#7d24a8';
+        ctx.fillRect(0,0,innerWidth,innerHeight);
       }
       ctx.restore();
     });
