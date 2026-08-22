@@ -5147,7 +5147,9 @@ function drawBackground(dt){
     bossFish.forEach(fish=>{
       ctx.save();
       ctx.translate(fish.x,fish.y);
-      if(fish.vx<0) ctx.scale(-1,1);
+      // 元の魚絵は左向き（頭が左、尾が右）。
+      // 右へ泳ぐ時だけ反転し、常に進行方向へ頭を向ける。
+      if(fish.vx>0) ctx.scale(-1,1);
       ctx.fillStyle='#72c75d';
       ctx.beginPath();
       ctx.ellipse(0,0,fish.r*1.25,fish.r*.72,0,0,Math.PI*2);

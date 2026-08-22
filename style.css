@@ -759,3 +759,32 @@ button{font:inherit;color:inherit}
   font-size:clamp(10px,1.5vw,14px) !important;
   padding:7px 10px !important;
 }
+
+/* v6.29: 対戦終了後の「もう一度」「選択画面に戻る」を重ねない */
+#restartButton.restart-btn{
+  left:50% !important;
+  top:55% !important;
+  bottom:auto !important;
+  transform:translate(-50%,-50%) !important;
+  min-width:210px;
+  border-radius:26px !important;
+  padding:13px 26px !important;
+  z-index:42 !important;
+}
+
+#titleReturnButton.title-return-btn{
+  left:50% !important;
+  top:72% !important;
+  bottom:auto !important;
+  right:auto !important;
+  transform:translate(-50%,-50%) !important;
+  min-width:250px;
+  border-radius:26px !important;
+  padding:12px 24px !important;
+  z-index:42 !important;
+}
+
+@media (max-height:520px){
+  #restartButton.restart-btn{top:52% !important;}
+  #titleReturnButton.title-return-btn{top:72% !important;}
+}
