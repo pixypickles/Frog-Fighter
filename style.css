@@ -718,3 +718,44 @@ button{font:inherit;color:inherit}
 #selectScreen .kawazu-frog{
   filter:none !important;
 }
+
+/* v6.28 */
+#selectScreen .fighter-card{
+  position:relative;
+  padding-top:78px !important;
+  overflow:visible !important;
+}
+#selectScreen .fighter-card .fighter-emoji{
+  position:absolute !important;
+  top:4px !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  z-index:5;
+  margin:0 !important;
+}
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji,
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  font-size:clamp(50px,7vw,78px) !important;
+  line-height:1 !important;
+  width:auto !important;
+  height:auto !important;
+}
+.practice-entry-wrap{
+  width:min(690px,94vw) !important;
+  display:grid !important;
+  grid-template-columns:minmax(300px,1fr) auto !important;
+  align-items:center !important;
+  gap:10px !important;
+  margin:0 auto !important;
+}
+.practice-entry-wrap .practice-btn{
+  width:100% !important;
+  min-width:0 !important;
+  padding-left:20px !important;
+  padding-right:20px !important;
+  font-size:clamp(17px,2.6vw,22px) !important;
+}
+.practice-beginner-badge{
+  font-size:clamp(10px,1.5vw,14px) !important;
+  padding:7px 10px !important;
+}
