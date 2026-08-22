@@ -130,6 +130,7 @@
   function unlockBeelzebub(){
     try{localStorage.setItem('kaeru_beelzebub_unlocked','1');}catch(e){}
     refreshBossUnlock();
+  }
 
   function isKawazuUnlocked(){
     try{return localStorage.getItem('kaeru_kawazu_unlocked')==='1';}
@@ -195,9 +196,6 @@
     };
   }
 
-
-  }
-
   refreshBossUnlock();
 
   document.querySelectorAll('.fighter-card').forEach(card => {
@@ -222,9 +220,18 @@
 
   const storyButton=document.getElementById('storyButton');
   if(storyButton){
-    storyButton.onclick=()=>{
+    const openStory=(e)=>{
+      if(e){
+        e.preventDefault();
+        e.stopPropagation();
+      }
       startStoryMode();
     };
+    storyButton.addEventListener('pointerup',openStory);
+    storyButton.addEventListener('click',(e)=>{
+      if(window.PointerEvent) return;
+      openStory(e);
+    });
   }
 
   const minigameBtn=document.getElementById('minigameBtn');
