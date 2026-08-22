@@ -366,6 +366,11 @@
       this.counterReady=false;
       this.tackleArmedT=0;
       this.tackleHit=false;
+      this.urielGuardHoldStart=0;
+      this.urielAuraT=0;
+      this.lilithSpinStartTime=0;
+      this.lilithSpinLastHitA=-9999;
+      this.lilithSpinLastHitB=-9999;
       this.piranhaRushHit=false;
       this.piranhaDivePhase=0;
       this.piranhaDiveTargetX=0;
@@ -401,6 +406,7 @@
         if(this.counterT<=0) this.counterReady=false;
       }
       if(this.tackleArmedT>0) this.tackleArmedT-=dt;
+      if(this.urielAuraT>0) this.urielAuraT=Math.max(0,this.urielAuraT-dt);
       if (this.flash>0) this.flash-=dt;
       if (this.hurtFaceT>0) this.hurtFaceT-=dt;
       if (this.guardStartT>0) this.guardStartT-=dt;
@@ -711,6 +717,10 @@
 
       if(this.specialType==='burningCyclone'){
         ctx.rotate(burningCycloneAngle(this));
+      }
+      if(this.specialType==='lilithBackSpin'){
+        const elapsed=(performance.now()-(this.lilithSpinStartTime||performance.now()))/1000;
+        ctx.rotate(elapsed*18*(this.face>0?-1:1));
       }
 
 
@@ -1145,7 +1155,7 @@
       }
 
       // キックは脚だけ前へ
-      if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='aquaStream'){
+      if(this.attack==='kick' && this.specialType!=='dropkick' && this.specialType!=='aquaStream' && this.specialType!=='lilithBackSpin'){
         ctx.save();
         ctx.filter='none';
         ctx.strokeStyle=pal.limb;
@@ -1159,6 +1169,12 @@
           ctx.lineTo(60,48);
         }
         ctx.stroke();
+        ctx.restore();
+      }
+
+      if(this.specialType==='lilithBackSpin'){
+        ctx.save(); ctx.filter='none'; ctx.strokeStyle=pal.limb; ctx.lineWidth=13; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(-13,45); ctx.lineTo(-58,46); ctx.moveTo(13,45); ctx.lineTo(58,46); ctx.stroke();
         ctx.restore();
       }
 
@@ -1247,6 +1263,22 @@
           ctx.beginPath();ctx.arc(bx,by,3+(i%3),0,Math.PI*2);ctx.stroke();
         }
         ctx.restore();
+      }
+
+      // ウリエルさん：ガード長押しで蓄えた薄い全身ホワイトオーラ
+      if(this.type==='orange' && this.urielAuraT>0){
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        ctx.strokeStyle='#ffffff'; ctx.lineWidth=4; ctx.globalAlpha=.22+.08*Math.sin(performance.now()/90);
+        ctx.beginPath(); ctx.ellipse(0,18,50,66,0,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+      if(this.type==='orange' && this.urielAuraT>0 && this.whiteReachAttack){
+        ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
+        ctx.strokeStyle='#ffffff'; ctx.globalAlpha=.62;
+        ctx.lineWidth=this.whiteReachAttack==='punch'?18:22;
+        ctx.beginPath();
+        if(this.whiteReachAttack==='punch'){ctx.moveTo(22,22);ctx.lineTo(205,8);}else{ctx.moveTo(15,48);ctx.lineTo(245,48);}
+        ctx.stroke(); ctx.restore();
       }
 
       // ウリエルさん：カウンター構え/反撃の白いオーラ
@@ -1859,7 +1891,8 @@
       ],
       purple:[
         '舌×3：リボンラッシュ',
-        '後ろ ＋ ガード×2：ナマズ突進'
+        '後ろ ＋ ガード×2：ナマズ突進',
+        '後ろ ＋ キック：バックスピンキック（キック追加入力で追加回転）'
       ],
       yellow:[
         '↓ → ＋ 舌：水圧カッター（真横）',
@@ -1870,7 +1903,9 @@
       ],
       orange:[
         'スティック1回転 ＋ ガード：ホワイトカウンター',
-        '← → ＋ ガード→パンチ：ガーディアンタックル'
+        '← → ＋ ガード→パンチ：ガーディアンタックル',
+        'ガード長押し→離す：ホワイトオーラ（長押し時間に応じて維持）',
+        'ホワイトオーラ中 パンチ／キック：白いリーチ約3倍攻撃'
       ],
       piranha:[
         '← → ＋ 舌：高速突進噛みつき',
@@ -2409,6 +2444,25 @@
     return true;
   }
 
+  function specialLilithBackSpin(f,additional=false){
+    if(gameOver || !f || f.type!=='purple' || f.stun>0 || f.throwState) return false;
+    if(additional && f.specialType==='lilithBackSpin'){
+      f.specialT=Math.min(1.55,f.specialT+.34);
+      f.attackT=Math.min(1.55,f.attackT+.34);
+      f.vx-=f.face*115;
+      return true;
+    }
+    if(f.specialT>0 || f.attackT>0) return false;
+    f.specialType='lilithBackSpin'; f.specialT=.58;
+    f.attack='kick'; f.attackT=.58;
+    f.lilithSpinStartTime=performance.now();
+    f.lilithSpinLastHitA=-9999; f.lilithSpinLastHitB=-9999;
+    f.vx-=f.face*285; f.vy*=.25;
+    comboEl.textContent='バックスピンキック!';
+    setTimeout(()=>{if(comboEl.textContent==='バックスピンキック!')comboEl.textContent='';},600);
+    return true;
+  }
+
   function specialUppercut(f){
     if(gameOver || f.stun>0 || f.guard || f.specialT>0 || f.attackT>0) return false;
 
@@ -2878,6 +2932,15 @@
       if(specialRibbonWhip(f)) return;
     }
 
+    // リリスさん：後ろ＋キック。技中のキック追加入力で回転を追加。
+    if(f.type==='purple' && kind==='kick'){
+      if(f.specialType==='lilithBackSpin'){
+        if(specialLilithBackSpin(f,true)) return;
+      }
+      const backHeld=(f.face>0 && input.x<-.35)||(f.face<0 && input.x>.35);
+      if(backHeld && specialLilithBackSpin(f,false)) return;
+    }
+
     // 通常攻撃より先に必殺技コマンドを判定
     if(trySpecial(f,kind)) return;
 
@@ -2912,6 +2975,23 @@
     const other = f.isPlayer ? enemy : player;
     const dir=f.face;
     const dist=Math.hypot(other.x-f.x, other.y-f.y);
+
+    // ウリエルさん：ガード長押しで得た白いオーラ中はパンチ/キックのリーチ約3倍。
+    if(f.type==='orange' && f.urielAuraT>0 && (kind==='punch'||kind==='kick')){
+      f.attack=kind; f.attackVariant='mid'; f.attackT=kind==='punch'?.40:.54;
+      f.whiteReachAttack=kind;
+      const reach=kind==='punch'?235:285;
+      const dmg=kind==='punch'?3.5:6.4;
+      const delay=kind==='punch'?120:170;
+      if(other && (other.x-f.x)*dir>0 && (other.x-f.x)*dir<reach && Math.abs(other.y-f.y)<82){
+        setTimeout(()=>{
+          if(!other)return;
+          damageHit(f,other,dmg*f.damageMul,(kind==='punch'?85:170)*dir,kind==='punch'?-8:-28);
+        },delay);
+      }
+      setTimeout(()=>{ if(f.whiteReachAttack===kind) f.whiteReachAttack=null; },Math.round((kind==='punch'?.40:.54)*1000));
+      return;
+    }
 
     if(f.type==='crayfish' && kind==='punch'){
       f.attack='crayfishHammer'; f.attackT=.42;
@@ -3242,6 +3322,11 @@
             }
           }
 
+          // ウリエルさん：通常ガード長押しの計測開始。
+          if(player.type==='orange' && !player.throwState && !player.urielGuardHoldStart){
+            player.urielGuardHoldStart=performance.now();
+          }
+
           // 舌投げで回転中は通常ガードではなく「壁受け身入力」。
           // 約0.24秒だけ受け身受付を残す。
           if(player.throwState){
@@ -3282,7 +3367,19 @@
       if(action==='punch' && player && btn.dataset.charging==='1'){
         btn.dataset.charging=''; releaseAbyssCharge(player);
       }
-      if(action==='guard'&&player) player.guard=false;
+      if(action==='guard'&&player){
+        player.guard=false;
+        if(player.type==='orange' && player.urielGuardHoldStart){
+          const held=(performance.now()-player.urielGuardHoldStart)/1000;
+          player.urielGuardHoldStart=0;
+          // 誤タップでは発動しない。0.55秒以上から、押していた長さ程度を維持（最大4秒）。
+          if(held>=.55 && !player.counterReady && player.specialType!=='whiteCounter'){
+            player.urielAuraT=Math.min(4.0,held);
+            comboEl.textContent='ホワイトオーラ!';
+            setTimeout(()=>{if(comboEl.textContent==='ホワイトオーラ!')comboEl.textContent='';},600);
+          }
+        }
+      }
     };
     btn.addEventListener('touchstart',down,{passive:false});btn.addEventListener('touchend',up,{passive:false});btn.addEventListener('touchcancel',up,{passive:false});
     btn.addEventListener('mousedown',down);btn.addEventListener('mouseup',up);btn.addEventListener('mouseleave',up);
@@ -3310,6 +3407,7 @@
     if(e.key==='k')attack(player,'kick');
     if(e.key==='l')attack(player,'tongue');
     if(e.key==='i'&&player){
+      if(player.type==='orange'&&!player.urielGuardHoldStart)player.urielGuardHoldStart=performance.now();
       player.guard=true;
       player.guardStartT=.28;
       if(guardMiniActive) guardMiniGuardTapTime=performance.now();
@@ -3477,6 +3575,22 @@
             f[foot.key]=now;
             // 超多段用の小ダメージ
             damageHit(f,other,.62*f.damageMul,16*f.face,-2);
+          }
+        });
+      }
+    }
+
+    if(f.specialType==='lilithBackSpin'){
+      const other=f.isPlayer?enemy:player;
+      const elapsed=(performance.now()-(f.lilithSpinStartTime||performance.now()))/1000;
+      const ang=elapsed*18*(f.face>0?-1:1);
+      if(other){
+        const now=performance.now();
+        [{x:-58,y:46,key:'lilithSpinLastHitA'},{x:58,y:46,key:'lilithSpinLastHitB'}].forEach(foot=>{
+          const p=rotatePoint(foot.x,foot.y,ang);
+          if(Math.hypot(other.x-(f.x+p.x),other.y-(f.y+p.y))<other.radius+22 && now-(f[foot.key]||-9999)>115){
+            f[foot.key]=now;
+            damageHit(f,other,.82*f.damageMul,-38*f.face,-5);
           }
         });
       }
