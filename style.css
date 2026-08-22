@@ -986,3 +986,26 @@ button{font:inherit;color:inherit}
     font-size:11px !important;
   }
 }
+
+/* v6.32: カワズさんは「白目に相当する部分」が赤。中央の瞳は黒系。 */
+#selectScreen .fighter-card[data-fighter="kawazu"] .fighter-emoji{
+  background:
+    radial-gradient(circle at 29% 23%,
+      #161616 0 7%,
+      #e32622 8% 20%,
+      var(--frog-eye-bump) 21% 31%,
+      transparent 32%),
+    radial-gradient(circle at 71% 23%,
+      #161616 0 7%,
+      #e32622 8% 20%,
+      var(--frog-eye-bump) 21% 31%,
+      transparent 32%),
+    radial-gradient(circle at 28% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(ellipse at 50% 62%,
+      var(--frog-body) 0 51%,
+      #3f9846 52% 56%,
+      transparent 57%) !important;
+}
