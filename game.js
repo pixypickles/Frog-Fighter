@@ -80,7 +80,7 @@
   let guardMiniTime=60, guardMiniScore=0, guardMiniMiss=0, guardSpawnTimer=0;
   let guardMiniGuardTapTime=-9999;
   let raceMiniActive=false, raceMiniStart=0, raceMiniElapsed=0, raceMiniBest=0;
-  let raceCheckpoints=[], raceCheckpointIndex=0, raceObstacles=[];
+  let raceCheckpoints=[], raceCheckpointIndex=0, raceEnemyCheckpointIndex=0, raceObstacles=[];
   let basketMiniActive=false, basketMiniTime=60, basketPlayerScore=0, basketEnemyScore=0;
   let basketBall=null, basketHoops=[], basketShotCooldown=0;
   let gameOver = false;
@@ -2134,35 +2134,32 @@
   }
 
   function buildRaceCourse(){
-    const left=82, right=innerWidth-82, top=88, bottom=innerHeight-78;
-    raceObstacles=[
-      {x:innerWidth*.25,y:bottom-80,r:25},
-      {x:innerWidth*.49,y:top+85,r:27},
-      {x:innerWidth*.73,y:bottom-100,r:25}
-    ];
-    raceCheckpoints=[
-      {x:left,y:bottom,r:48},
-      {x:raceObstacles[0].x,y:raceObstacles[0].y-88,r:52},
-      {x:raceObstacles[1].x,y:raceObstacles[1].y+92,r:52},
-      {x:raceObstacles[2].x,y:raceObstacles[2].y-92,r:52},
-      {x:right,y:top+26,r:58},
-      {x:right-20,y:bottom-12,r:58},
-      {x:raceObstacles[2].x,y:raceObstacles[2].y+92,r:52},
-      {x:raceObstacles[1].x,y:raceObstacles[1].y-92,r:52},
-      {x:raceObstacles[0].x,y:raceObstacles[0].y+88,r:52},
-      {x:left,y:bottom,r:52}
-    ];
+    // v6.38: ジグザグ障害物コースを廃止。見てすぐ分かる楕円1周コース。
+    const cx=innerWidth*.5, cy=innerHeight*.52;
+    const rx=Math.max(230,innerWidth*.37), ry=Math.max(115,innerHeight*.27);
+    raceObstacles=[];
+    raceCheckpoints=[];
+    // 左下寄りをスタートにして時計回り。細かいCPでショートカットを防ぐ。
+    const startAng=Math.PI*.82;
+    const count=20;
+    for(let i=0;i<=count;i++){
+      const ang=startAng-(Math.PI*2*i/count);
+      raceCheckpoints.push({x:cx+Math.cos(ang)*rx,y:cy+Math.sin(ang)*ry,r:62});
+    }
     raceCheckpointIndex=1;
+    raceEnemyCheckpointIndex=1;
   }
 
   function startRaceMiniGame(){
     gameMode='raceMini'; gameOver=false; restartButton.hidden=true;
     comboEl.textContent=''; show('game'); resize();
-    player=new Fighter(82,innerHeight-78,true,selectedFighter);
-    enemy=new PracticeDummy(); enemy.x=-5000; enemy.y=-5000;
+    buildRaceCourse();
+    const start=raceCheckpoints[0];
+    player=new Fighter(start.x,start.y+22,true,selectedFighter);
+    enemy=new Fighter(start.x,start.y-22,false,'blue');
+    enemy.face=1;
     leafMiniActive=false;guardMiniActive=false;basketMiniActive=false;raceMiniActive=true;
     hideAllMiniHuds();
-    buildRaceCourse();
     raceMiniStart=performance.now();raceMiniElapsed=0;
     try{raceMiniBest=parseFloat(localStorage.getItem('kaeru_race_best')||'0')||0;}catch(e){raceMiniBest=0;}
     if(raceMiniHud){raceMiniHud.hidden=false;raceMiniHud.style.display='flex';}
@@ -2187,21 +2184,24 @@
   }
 
   function resetBasketBall(){
-    basketBall={x:innerWidth*.5,y:innerHeight*.52,vx:0,vy:0,r:18,owner:null,lastTouch:null};
-    player.x=innerWidth*.28;player.y=innerHeight*.60;player.vx=player.vy=0;
-    enemy.x=innerWidth*.72;enemy.y=innerHeight*.42;enemy.vx=enemy.vy=0;
+    // マリモ型パック。最初から速めに動かす。
+    const dir=Math.random()<.5?-1:1;
+    basketBall={x:innerWidth*.5,y:innerHeight*.52,vx:dir*390,vy:(Math.random()-.5)*240,r:17,owner:null,lastTouch:null};
+    player.x=innerWidth*.24;player.y=innerHeight*.52;player.vx=player.vy=0;
+    enemy.x=innerWidth*.76;enemy.y=innerHeight*.52;enemy.vx=enemy.vy=0;
   }
 
   function startBasketMiniGame(){
     gameMode='basketMini'; gameOver=false; restartButton.hidden=true;
     comboEl.textContent=''; show('game'); resize();
-    player=new Fighter(innerWidth*.28,innerHeight*.60,true,selectedFighter);
-    enemy=new Fighter(innerWidth*.72,innerHeight*.42,false,'blue');
+    player=new Fighter(innerWidth*.24,innerHeight*.52,true,selectedFighter);
+    enemy=new Fighter(innerWidth*.76,innerHeight*.52,false,'blue');
     leafMiniActive=false;guardMiniActive=false;raceMiniActive=false;basketMiniActive=true;
     basketMiniTime=60;basketPlayerScore=0;basketEnemyScore=0;basketShotCooldown=0;
+    // 左右のゴール。playerは左陣、CPUは右陣から出られない。
     basketHoops=[
-      {x:70,y:innerHeight*.27,side:'cpu'},
-      {x:innerWidth-70,y:innerHeight*.27,side:'player'}
+      {x:12,y:innerHeight*.52,side:'cpu'},
+      {x:innerWidth-12,y:innerHeight*.52,side:'player'}
     ];
     resetBasketBall();
     hideAllMiniHuds();
@@ -2211,6 +2211,21 @@
     if(basketTimeEl)basketTimeEl.textContent='60.0';
     if(practiceExitButton){practiceExitButton.hidden=false;practiceExitButton.textContent='ミニゲーム終了';}
     running=true;last=performance.now();updateHud();
+  }
+
+  function hockeyStrike(f,kind){
+    if(!basketMiniActive || !basketBall || !f)return false;
+    const dx=basketBall.x-f.x,dy=basketBall.y-f.y;
+    const reach=kind==='tongue'?(f.tongueRange||220)*.72:(f.radius+82);
+    if(Math.hypot(dx,dy)>reach)return false;
+    // 舌は遠くから弾けるが少し弱め。パンチ/キックは強打。
+    const speed=kind==='tongue'?520:(kind==='kick'?720:650);
+    const d=Math.hypot(dx,dy)||1;
+    basketBall.owner=null;
+    basketBall.lastTouch=f;
+    basketBall.vx=dx/d*speed + f.face*110;
+    basketBall.vy=dy/d*speed + (Math.random()-.5)*80;
+    return true;
   }
 
   function endBasketMiniGame(){
@@ -3586,11 +3601,7 @@
 
   function attack(f, kind) {
     if(basketMiniActive){
-      if(kind==='tongue' && basketTongueUse(f)) return;
-      if((kind==='punch' || kind==='kick') && basketBall && basketBall.owner===f){
-        basketShoot(f);
-        return;
-      }
+      hockeyStrike(f,kind);
     }
 
     if(gameOver || f.guard) return;
@@ -4655,82 +4666,87 @@ function drawBackground(dt){
             endRaceMiniGame();
           }
         }
-        raceObstacles.forEach(o=>{
-          const dx=player.x-o.x,dy=player.y-o.y;
-          const d=Math.hypot(dx,dy)||1;
-          if(d<player.radius+o.r){
-            const rr=player.radius+o.r+3;
-            player.x=o.x+dx/d*rr;
-            player.y=o.y+dy/d*rr;
-            player.vx*=.42;player.vy*=.42;
+        // CPUレーサーも同じ楕円を走る。少しだけライン取りに揺らぎを入れる。
+        const ecp=raceCheckpoints[raceEnemyCheckpointIndex];
+        if(ecp && enemy){
+          const dx=ecp.x-enemy.x,dy=ecp.y-enemy.y,d=Math.hypot(dx,dy)||1;
+          const cpuSpeed=enemy.speed*.88;
+          enemy.vx+=dx/d*cpuSpeed*2.2*dt;
+          enemy.vy+=dy/d*cpuSpeed*2.2*dt;
+          if(d<ecp.r){
+            raceEnemyCheckpointIndex++;
+            if(raceEnemyCheckpointIndex>=raceCheckpoints.length){
+              raceMiniActive=false;
+              comboEl.textContent='RIVAL WIN!';
+              restartButton.hidden=false;
+            }
           }
-        });
+        }
       }
 
       if(basketMiniActive){
         basketMiniTime-=dt;
-        basketShotCooldown=Math.max(0,basketShotCooldown-dt);
         if(basketTimeEl)basketTimeEl.textContent=Math.max(0,basketMiniTime).toFixed(1);
 
+        // 自陣から出られない：中央線を越えない。
+        const mid=innerWidth*.5, margin=player.radius+8;
+        player.x=Math.min(player.x,mid-margin);
+        enemy.x=Math.max(enemy.x,mid+margin);
+
         if(basketBall){
-          if(basketBall.owner){
-            const f=basketBall.owner;
-            basketBall.x=f.x+f.face*43;
-            basketBall.y=f.y+5;
-          }else{
-            basketBall.vy+=10*dt;
-            basketBall.vx*=Math.pow(.993,dt*60);
-            basketBall.vy*=Math.pow(.995,dt*60);
-            basketBall.x+=basketBall.vx*dt;
-            basketBall.y+=basketBall.vy*dt;
-            if(basketBall.x<18||basketBall.x>innerWidth-18)basketBall.vx*=-.72;
-            if(basketBall.y<55||basketBall.y>innerHeight-50)basketBall.vy*=-.72;
-            basketBall.x=Math.max(18,Math.min(innerWidth-18,basketBall.x));
-            basketBall.y=Math.max(55,Math.min(innerHeight-50,basketBall.y));
+          basketBall.owner=null;
+          basketBall.vx*=Math.pow(.9985,dt*60);
+          basketBall.vy*=Math.pow(.9985,dt*60);
+          // 遅くなりすぎない。エアホッケーらしく常に速め。
+          let sp=Math.hypot(basketBall.vx,basketBall.vy);
+          if(sp<330){
+            const ang=sp>20?Math.atan2(basketBall.vy,basketBall.vx):(Math.random()*Math.PI*2);
+            basketBall.vx=Math.cos(ang)*330;basketBall.vy=Math.sin(ang)*330;
+          }else if(sp>820){
+            basketBall.vx*=820/sp;basketBall.vy*=820/sp;
+          }
+          basketBall.x+=basketBall.vx*dt;
+          basketBall.y+=basketBall.vy*dt;
 
-            for(const hoop of basketHoops){
-              if(Math.hypot(basketBall.x-hoop.x,basketBall.y-hoop.y)<29){
-                if(hoop.side==='player' && basketBall.lastTouch===player){
-                  basketPlayerScore++;
-                  if(basketPlayerScoreEl)basketPlayerScoreEl.textContent=String(basketPlayerScore);
-                  comboEl.textContent='SCORE!';
-                  resetBasketBall();
-                  break;
-                }
-                if(hoop.side==='cpu' && basketBall.lastTouch===enemy){
-                  basketEnemyScore++;
-                  if(basketEnemyScoreEl)basketEnemyScoreEl.textContent=String(basketEnemyScore);
-                  comboEl.textContent='CPU SCORE';
-                  resetBasketBall();
-                  break;
-                }
-              }
+          const goalHalf=Math.max(62,innerHeight*.13);
+          const cy=innerHeight*.52;
+          // 上下壁
+          if(basketBall.y<62+basketBall.r || basketBall.y>innerHeight-48-basketBall.r){
+            basketBall.vy*=-1;
+            basketBall.y=Math.max(62+basketBall.r,Math.min(innerHeight-48-basketBall.r,basketBall.y));
+          }
+          // 左右壁。ただしゴール開口部は通過して得点。
+          if(basketBall.x<8+basketBall.r){
+            if(Math.abs(basketBall.y-cy)<goalHalf){
+              basketEnemyScore++;
+              if(basketEnemyScoreEl)basketEnemyScoreEl.textContent=String(basketEnemyScore);
+              comboEl.textContent='RIVAL SCORE';
+              resetBasketBall();
+            }else{
+              basketBall.vx=Math.abs(basketBall.vx);
+              basketBall.x=8+basketBall.r;
             }
-
-            for(const f of [player,enemy]){
-              if(!basketBall.owner && Math.hypot(f.x-basketBall.x,f.y-basketBall.y)<f.radius+basketBall.r+7){
-                basketBall.owner=f;basketBall.lastTouch=f;break;
-              }
+          }else if(basketBall.x>innerWidth-8-basketBall.r){
+            if(Math.abs(basketBall.y-cy)<goalHalf){
+              basketPlayerScore++;
+              if(basketPlayerScoreEl)basketPlayerScoreEl.textContent=String(basketPlayerScore);
+              comboEl.textContent='SCORE!';
+              resetBasketBall();
+            }else{
+              basketBall.vx=-Math.abs(basketBall.vx);
+              basketBall.x=innerWidth-8-basketBall.r;
             }
           }
-        }
 
-        // 1on1 CPU: ボールへ移動、保持したらリングへ。舌でも奪う。
-        if(enemy && enemy.stun<=0 && basketBall){
-          const target=basketBall.owner===enemy?basketHoops[0]:
-            (basketBall.owner===player?player:basketBall);
-          const dx=target.x-enemy.x,dy=target.y-enemy.y;
-          enemy.vx+=Math.sign(dx)*enemy.speed*.82*dt;
-          enemy.vy+=Math.sign(dy)*enemy.speed*.54*dt;
-
-          if(basketBall.owner===enemy){
-            if(Math.hypot(enemy.x-basketHoops[0].x,enemy.y-basketHoops[0].y)<255 && Math.random()<dt*1.5){
-              basketShoot(enemy);
+          // CPUは自陣内でマリモのYに合わせて守り、近ければ打ち返す。
+          if(enemy && enemy.stun<=0){
+            const tx=Math.max(mid+margin,Math.min(innerWidth*.82,basketBall.x));
+            const ty=basketBall.y;
+            enemy.vx+=Math.sign(tx-enemy.x)*enemy.speed*.72*dt;
+            enemy.vy+=Math.sign(ty-enemy.y)*enemy.speed*.62*dt;
+            if(Math.hypot(enemy.x-basketBall.x,enemy.y-basketBall.y)<enemy.radius+92 && Math.random()<dt*8){
+              hockeyStrike(enemy,Math.random()<.45?'kick':'punch');
             }
-          }else if(basketBall.owner===player &&
-                   Math.abs(player.x-enemy.x)<enemy.tongueRange*.95 &&
-                   Math.random()<dt*.75){
-            basketTongueUse(enemy);
           }
         }
 
@@ -4891,57 +4907,37 @@ function drawBackground(dt){
 
     if(raceMiniActive){
       ctx.save();
-      ctx.strokeStyle='rgba(255,255,255,.25)';
-      ctx.lineWidth=3;
-      ctx.setLineDash([8,10]);
-      ctx.beginPath();
-      raceCheckpoints.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      for(let i=0;i<raceCheckpoints.length-1;i++){
-        const a=raceCheckpoints[i],b=raceCheckpoints[i+1];
-        const x=a.x+(b.x-a.x)*.55,y=a.y+(b.y-a.y)*.55;
-        const ang=Math.atan2(b.y-a.y,b.x-a.x);
-        ctx.save();ctx.translate(x,y);ctx.rotate(ang);
-        ctx.fillStyle='rgba(255,242,120,.84)';
+      const xs=raceCheckpoints.map(p=>p.x), ys=raceCheckpoints.map(p=>p.y);
+      const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+      const rx=(Math.max(...xs)-Math.min(...xs))/2, ry=(Math.max(...ys)-Math.min(...ys))/2;
+      ctx.strokeStyle='rgba(255,255,255,.32)';ctx.lineWidth=38;
+      ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle='rgba(70,225,240,.75)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      for(let i=2;i<raceCheckpoints.length;i+=4){
+        const p=raceCheckpoints[i], q=raceCheckpoints[Math.min(i+1,raceCheckpoints.length-1)];
+        const ang=Math.atan2(q.y-p.y,q.x-p.x);
+        ctx.save();ctx.translate(p.x,p.y);ctx.rotate(ang);
+        ctx.fillStyle='rgba(255,242,120,.9)';
         ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-9);ctx.lineTo(-5,0);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();
         ctx.restore();
-      }
-
-      raceObstacles.forEach(o=>{
-        ctx.save();ctx.translate(o.x,o.y);
-        ctx.fillStyle='#685674';ctx.strokeStyle='#e0bdff';ctx.lineWidth=3;
-        ctx.beginPath();
-        for(let i=0;i<16;i++){
-          const a=i*Math.PI/8,rr=i%2===0?o.r*1.58:o.r;
-          const x=Math.cos(a)*rr,y=Math.sin(a)*rr;
-          if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-        }
-        ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
-      });
-
-      const cp=raceCheckpoints[raceCheckpointIndex];
-      if(cp){
-        ctx.strokeStyle='rgba(255,255,125,.8)';ctx.lineWidth=4;
-        ctx.beginPath();ctx.arc(cp.x,cp.y,cp.r*.72,0,Math.PI*2);ctx.stroke();
       }
       ctx.restore();
     }
 
     if(basketMiniActive){
       ctx.save();
-      basketHoops.forEach(hoop=>{
-        ctx.strokeStyle='#f7d660';ctx.lineWidth=5;
-        ctx.beginPath();ctx.arc(hoop.x,hoop.y,27,0,Math.PI*2);ctx.stroke();
-        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;
-        ctx.beginPath();
-        for(let x=-16;x<=16;x+=8){
-          ctx.moveTo(hoop.x+x,hoop.y+20);
-          ctx.lineTo(hoop.x+x*.45,hoop.y+48);
-        }
-        ctx.stroke();
-      });
+      const mid=innerWidth*.5, cy=innerHeight*.52, gh=Math.max(62,innerHeight*.13);
+      // 中央線
+      ctx.strokeStyle='rgba(255,255,255,.42)';ctx.lineWidth=3;ctx.setLineDash([10,10]);
+      ctx.beginPath();ctx.moveTo(mid,58);ctx.lineTo(mid,innerHeight-48);ctx.stroke();ctx.setLineDash([]);
+      // 左右ゴール
+      for(const x of [10,innerWidth-10]){
+        ctx.strokeStyle='#f7d660';ctx.lineWidth=6;
+        ctx.beginPath();ctx.moveTo(x,cy-gh);ctx.lineTo(x,cy+gh);ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
+        for(let y=cy-gh;y<=cy+gh;y+=14){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(x<mid?28:-28),y);ctx.stroke();}
+      }
       ctx.restore();
     }
 
@@ -4959,7 +4955,7 @@ function drawBackground(dt){
     enemy.draw();
     ctx.restore();
 
-    // WATER BASKETのボールは背景・キャラクターの後に描画。
+    // WATER HOCKEYのマリモは背景・キャラクターの後に描画。
     // update側で描くと次のdrawBackgroundで消えるため、必ずここで表示する。
     if(basketMiniActive && basketBall){
       ctx.save();
@@ -4969,15 +4965,15 @@ function drawBackground(dt){
       // 水中でも見失いにくいよう少し大きめ＋白い縁取り
       const br=Math.max(18,basketBall.r||15);
 
-      ctx.fillStyle='#f4a83b';
-      ctx.strokeStyle='#fff1c7';
+      ctx.fillStyle='#4f9d45';
+      ctx.strokeStyle='#b9ef9f';
       ctx.lineWidth=4;
       ctx.beginPath();
       ctx.arc(basketBall.x,basketBall.y,br,0,Math.PI*2);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle='#6d3c18';
+      ctx.strokeStyle='rgba(30,95,36,.65)';
       ctx.lineWidth=2.5;
       ctx.beginPath();
       ctx.moveTo(basketBall.x-br,basketBall.y);
