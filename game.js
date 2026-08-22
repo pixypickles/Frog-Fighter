@@ -1963,20 +1963,20 @@
   function buildRaceCourse(){
     const left=82, right=innerWidth-82, top=88, bottom=innerHeight-78;
     raceObstacles=[
-      {x:innerWidth*.30,y:bottom-80,r:27},
-      {x:innerWidth*.47,y:top+85,r:30},
-      {x:innerWidth*.64,y:bottom-100,r:28}
+      {x:innerWidth*.25,y:bottom-80,r:25},
+      {x:innerWidth*.49,y:top+85,r:27},
+      {x:innerWidth*.73,y:bottom-100,r:25}
     ];
     raceCheckpoints=[
       {x:left,y:bottom,r:48},
-      {x:raceObstacles[0].x,y:raceObstacles[0].y-78,r:52},
-      {x:raceObstacles[1].x,y:raceObstacles[1].y+82,r:52},
-      {x:raceObstacles[2].x,y:raceObstacles[2].y-82,r:52},
+      {x:raceObstacles[0].x,y:raceObstacles[0].y-88,r:52},
+      {x:raceObstacles[1].x,y:raceObstacles[1].y+92,r:52},
+      {x:raceObstacles[2].x,y:raceObstacles[2].y-92,r:52},
       {x:right,y:top+26,r:58},
       {x:right-20,y:bottom-12,r:58},
-      {x:raceObstacles[2].x,y:raceObstacles[2].y+82,r:52},
-      {x:raceObstacles[1].x,y:raceObstacles[1].y-82,r:52},
-      {x:raceObstacles[0].x,y:raceObstacles[0].y+82,r:52},
+      {x:raceObstacles[2].x,y:raceObstacles[2].y+92,r:52},
+      {x:raceObstacles[1].x,y:raceObstacles[1].y-92,r:52},
+      {x:raceObstacles[0].x,y:raceObstacles[0].y+88,r:52},
       {x:left,y:bottom,r:52}
     ];
     raceCheckpointIndex=1;
@@ -2014,7 +2014,7 @@
   }
 
   function resetBasketBall(){
-    basketBall={x:innerWidth*.5,y:innerHeight*.52,vx:0,vy:0,r:15,owner:null,lastTouch:null};
+    basketBall={x:innerWidth*.5,y:innerHeight*.52,vx:0,vy:0,r:18,owner:null,lastTouch:null};
     player.x=innerWidth*.28;player.y=innerHeight*.60;player.vx=player.vy=0;
     enemy.x=innerWidth*.72;enemy.y=innerHeight*.42;enemy.vx=enemy.vy=0;
   }
@@ -4184,21 +4184,7 @@ function drawBackground(dt){
 
 
       // ラファエルさんの水圧カッター更新
-      if(basketMiniActive && basketBall){
-      ctx.save();
-      ctx.fillStyle='#f0a13a';ctx.strokeStyle='#6b3d18';ctx.lineWidth=2;
-      ctx.beginPath();ctx.arc(basketBall.x,basketBall.y,basketBall.r,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(basketBall.x-basketBall.r,basketBall.y);
-      ctx.lineTo(basketBall.x+basketBall.r,basketBall.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(basketBall.x,basketBall.y,basketBall.r*.58,-Math.PI/2,Math.PI/2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if(leafMiniActive){
+      if(leafMiniActive){
         leafMiniTime-=dt;
         leafSpawnTimer-=dt;
 
@@ -4651,6 +4637,44 @@ function drawBackground(dt){
 
     player.draw();
     enemy.draw();
+
+    // WATER BASKETのボールは背景・キャラクターの後に描画。
+    // update側で描くと次のdrawBackgroundで消えるため、必ずここで表示する。
+    if(basketMiniActive && basketBall){
+      ctx.save();
+      ctx.globalAlpha=1;
+      ctx.globalCompositeOperation='source-over';
+
+      // 水中でも見失いにくいよう少し大きめ＋白い縁取り
+      const br=Math.max(18,basketBall.r||15);
+
+      ctx.fillStyle='#f4a83b';
+      ctx.strokeStyle='#fff1c7';
+      ctx.lineWidth=4;
+      ctx.beginPath();
+      ctx.arc(basketBall.x,basketBall.y,br,0,Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle='#6d3c18';
+      ctx.lineWidth=2.5;
+      ctx.beginPath();
+      ctx.moveTo(basketBall.x-br,basketBall.y);
+      ctx.lineTo(basketBall.x+br,basketBall.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(basketBall.x,basketBall.y,br*.58,-Math.PI/2,Math.PI/2);
+      ctx.stroke();
+
+      // 小さなハイライト
+      ctx.fillStyle='rgba(255,255,255,.72)';
+      ctx.beginPath();
+      ctx.arc(basketBall.x-br*.35,basketBall.y-br*.35,br*.18,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+    }
 
     if(leafMiniActive){
       leafTargets.forEach(leaf=>{
