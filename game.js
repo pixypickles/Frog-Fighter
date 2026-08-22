@@ -4157,6 +4157,24 @@
     });
   }
 
+  function ensureFighterVisible(f,fallbackX,fallbackY){
+    if(!f) return;
+
+    if(!Number.isFinite(f.x) || !Number.isFinite(f.y) ||
+       !Number.isFinite(f.vx) || !Number.isFinite(f.vy)){
+      f.x=fallbackX;
+      f.y=fallbackY;
+      f.vx=0;
+      f.vy=0;
+      f.spinAngle=0;
+      f.throwState=null;
+    }
+
+    const margin=Math.max(42,(Number.isFinite(f.radius)?f.radius:35)+8);
+    f.x=Math.max(margin,Math.min(innerWidth-margin,f.x));
+    f.y=Math.max(58,Math.min(innerHeight-58,f.y));
+  }
+
   function separateBattleFighters(a,b){
     // 表示・描画処理とは完全に独立した座標補正だけ。
     if(!a || !b) return;
@@ -4361,13 +4379,14 @@ function drawBackground(dt){
       player.update(dt);enemy.update(dt);
       updateNewSpecialMoves(player,dt);
       updateNewSpecialMoves(enemy,dt);
-      updateNewSpecialMoves(player,dt);
-      updateNewSpecialMoves(enemy,dt);
 
       // v6.5: フリー対戦／ストーリーだけ、上下位置が近い時に横へ押し分ける。
       if(gameMode==='battle' || gameMode==='story'){
         separateBattleFighters(player,enemy);
       }
+
+      ensureFighterVisible(player,innerWidth*.28,innerHeight*.52);
+      ensureFighterVisible(enemy,innerWidth*.72,innerHeight*.48);
 
 
 
@@ -4644,24 +4663,6 @@ function drawBackground(dt){
       kawazuGhosts.forEach(q=>q.t-=dt);
       kawazuGhosts=kawazuGhosts.filter(q=>q.t>0);
 
-      kawazuGhosts.forEach(q=>{
-      const a=Math.max(0,q.t/q.life);
-      ctx.save();ctx.translate(q.x,q.y);ctx.globalAlpha=.28*a;
-      ctx.fillStyle='#63d968';ctx.beginPath();ctx.ellipse(0,4,23,27,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#ff7138';
-      ctx.beginPath();ctx.arc(-13,-20,10,0,Math.PI*2);ctx.arc(13,-20,10,0,Math.PI*2);ctx.fill();
-      ctx.restore();
-    });
-    kawazuShots.forEach(p=>{
-      const a=Math.max(0,p.t/p.life);
-      ctx.save();ctx.translate(p.x,p.y);ctx.globalCompositeOperation='lighter';
-      ctx.globalAlpha=.72*a;ctx.fillStyle='#c8f7ff';
-      ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();
-      ctx.globalAlpha=.35*a;ctx.strokeStyle='#6ee7ff';ctx.lineWidth=5;
-      ctx.beginPath();ctx.arc(0,0,p.r+5,0,Math.PI*2);ctx.stroke();
-      ctx.restore();
-    });
-
     pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -4856,8 +4857,19 @@ function drawBackground(dt){
       ctx.restore();
     }
 
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+    ctx.filter='none';
+    ctx.shadowBlur=0;
+    ctx.shadowColor='transparent';
+
+    ctx.save();
     player.draw();
+    ctx.restore();
+
+    ctx.save();
     enemy.draw();
+    ctx.restore();
 
     // WATER BASKETのボールは背景・キャラクターの後に描画。
     // update側で描くと次のdrawBackgroundで消えるため、必ずここで表示する。
@@ -5064,6 +5076,42 @@ function drawBackground(dt){
 
     // ラファエルさん：控えめな三日月型の水圧カッター
     // 描画順だけは修正版のまま。見た目は最初の予定に近くする。
+    kawazuGhosts.forEach(q=>{
+      const a=Math.max(0,q.t/q.life);
+      ctx.save();
+      ctx.translate(q.x,q.y);
+      ctx.globalAlpha=.28*a;
+      ctx.fillStyle='#63d968';
+      ctx.beginPath();
+      ctx.ellipse(0,4,23,27,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle='#ff7138';
+      ctx.beginPath();
+      ctx.arc(-13,-20,10,0,Math.PI*2);
+      ctx.arc(13,-20,10,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    kawazuShots.forEach(p=>{
+      const a=Math.max(0,p.t/p.life);
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=.72*a;
+      ctx.fillStyle='#c8f7ff';
+      ctx.beginPath();
+      ctx.arc(0,0,p.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha=.35*a;
+      ctx.strokeStyle='#6ee7ff';
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      ctx.arc(0,0,p.r+5,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
     pressureBlades.forEach(p=>{
       const a=Math.max(0,p.t/p.life);
 

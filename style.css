@@ -410,7 +410,12 @@ button{font:inherit;color:inherit}
   background:rgba(4,72,86,.92); color:white; font-weight:900;
 }
 .story-rule{font-size:11px;font-weight:800;opacity:.85;text-align:center}
-.story-btn{background:linear-gradient(180deg,#6d466f,#3a284f)!important}
+.story-btn{
+  background:linear-gradient(180deg,#9d62c5,#6d3f98)!important;
+  color:#fff!important;
+  text-shadow:0 2px 2px rgba(0,0,0,.28);
+  box-shadow:0 5px 0 #4f2b74,0 0 18px rgba(210,150,255,.25)!important;
+}
 .story-hud{
   position:absolute; top:54px; left:50%; transform:translateX(-50%);
   z-index:35; padding:5px 10px; border-radius:13px;
