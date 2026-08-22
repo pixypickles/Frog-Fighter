@@ -1106,7 +1106,6 @@
 
       ctx.restore();
 
-      // ルシファーさん：シンプルな一本傷
       // パンチは腕だけ前へ
       if(this.attack==='punch'){
         ctx.save();
@@ -1116,8 +1115,13 @@
         ctx.lineCap='round';
         ctx.beginPath();
         ctx.moveTo(22,22);
-        if(this.specialType==='abyssCharge' || this.specialType==='abyssBurst'){
-          ctx.lineTo(68,7);
+        if(this.specialType==='abyssCharge'){
+          // アビスチャージ中：肘を曲げ、拳を身体の横へ引いて溜める。
+          ctx.lineTo(37,31);
+          ctx.lineTo(26,8);
+        }else if(this.specialType==='abyssBurst'){
+          // ボタンを離した瞬間：溜めた腕を前へ伸ばしてパンチ。
+          ctx.lineTo(70,7);
         }else if(this.specialType==='hellCrashFinish'){
           ctx.lineTo(48,-38);
         }else if(this.specialType==='aquaTornado'){
@@ -1192,8 +1196,12 @@
         }
         if(this.specialType==='hellCrashFinish'){
           drawRedAura(48,-38,22,19,intensity);
+        }else if(this.specialType==='abyssCharge'){
+          // 曲げた腕の拳に赤い力を溜める。
+          drawRedAura(26,8,16,14,intensity);
         }else{
-          drawRedAura(58,7,21,17,intensity);
+          // パンチが伸びた先で炸裂。
+          drawRedAura(64,7,23,19,intensity);
         }
       }
 
@@ -2195,6 +2203,8 @@
     const held=Math.max(0,performance.now()-(f.chargeStartTime||performance.now()));
     const power=Math.max(.25,Math.min(1,held/1150));
     f.specialType='abyssBurst'; f.specialT=.5; f.attack='punch'; f.attackVariant='mid'; f.attackT=.5; f.chargePower=power;
+    // 溜め姿勢から拳を出す瞬間に、身体もわずかに前へ乗せる。
+    f.vx+=f.face*(38+42*power);
     comboEl.textContent='アビスチャージ!';setTimeout(()=>{if(comboEl.textContent==='アビスチャージ!')comboEl.textContent='';},720);
     setTimeout(()=>{
       if(gameOver)return; const other=f.isPlayer?enemy:player; if(!other)return;
