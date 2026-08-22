@@ -467,3 +467,10 @@ button{font:inherit;color:inherit}
   font-weight:800;
   white-space:normal;
 }
+
+.practice-help-note{
+  margin-top:4px;
+  font-size:clamp(9px,1.25vw,12px);
+  font-weight:800;
+  opacity:.72;
+}

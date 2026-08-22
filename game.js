@@ -190,7 +190,7 @@
       titleReturnButton.hidden=true;
       comboEl.textContent='';
       if(practiceHelp){practiceHelp.hidden=true;practiceHelp.style.display='none';}
-      show('title');
+      show('select');
     };
   }
 
@@ -1816,7 +1816,7 @@
     const map={
       green:[
         '↓ ↑ ＋ パンチ：バーニングアッパー',
-        '← → ＋ キック：バーニングキック'
+        '↓ → ＋ キック：バーニングキック'
       ],
       blue:[
         '↙ ↗ ＋ パンチ：アクアトルネード',
@@ -2558,7 +2558,7 @@
 
       const back=f.face>0?'left':'right';
       const forward=f.face>0?'right':'left';
-      if(kind==='kick' && hasCommand([back,forward],720)){
+      if(kind==='kick' && hasCommand(['down',forward],720)){
         clearCommand();
         return specialDropKick(f);
       }
