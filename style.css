@@ -843,3 +843,146 @@ button{font:inherit;color:inherit}
     height:56px !important;
   }
 }
+
+/* v6.31: カエル顔を左固定 + 目が少し飛び出した輪郭へ */
+#selectScreen .fighter-card{
+  position:relative !important;
+  padding-left:126px !important;
+  padding-right:18px !important;
+  padding-top:18px !important;
+  padding-bottom:18px !important;
+  min-height:150px !important;
+  overflow:visible !important;
+}
+
+#selectScreen .fighter-card .fighter-emoji{
+  position:absolute !important;
+  left:18px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  width:92px !important;
+  height:78px !important;
+  margin:0 !important;
+  z-index:6 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+
+  /* 頭本体は少し下、眼球は上に飛び出す */
+  background:
+    radial-gradient(circle at 29% 23%,
+      var(--frog-iris) 0 8%,
+      #fff 9% 19%,
+      var(--frog-eye-bump) 20% 31%,
+      transparent 32%),
+    radial-gradient(circle at 71% 23%,
+      var(--frog-iris) 0 8%,
+      #fff 9% 19%,
+      var(--frog-eye-bump) 20% 31%,
+      transparent 32%),
+    radial-gradient(circle at 28% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(ellipse at 50% 62%,
+      var(--frog-body) 0 51%,
+      color-mix(in srgb,var(--frog-body) 86%,#000 14%) 52% 56%,
+      transparent 57%) !important;
+}
+
+/* 口は頭本体の上に */
+#selectScreen .fighter-card:not([data-fighter="piranha"]):not([data-fighter="crayfish"]) .fighter-emoji::after{
+  content:"";
+  position:absolute;
+  left:34%;
+  top:58%;
+  width:32%;
+  height:14%;
+  border-bottom:4px solid var(--frog-mouth);
+  border-radius:0 0 55% 55%;
+}
+
+/* カワズさんだけ赤い虹彩 */
+#selectScreen .fighter-card[data-fighter="kawazu"] .fighter-emoji{
+  background:
+    radial-gradient(circle at 29% 23%,
+      #151515 0 4%,
+      #df3029 5% 11%,
+      #fff 12% 20%,
+      var(--frog-eye-bump) 21% 31%,
+      transparent 32%),
+    radial-gradient(circle at 71% 23%,
+      #151515 0 4%,
+      #df3029 5% 11%,
+      #fff 12% 20%,
+      var(--frog-eye-bump) 21% 31%,
+      transparent 32%),
+    radial-gradient(circle at 28% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 67%,
+      var(--frog-cheek) 0 7%, transparent 8%),
+    radial-gradient(ellipse at 50% 62%,
+      var(--frog-body) 0 51%,
+      #3f9846 52% 56%,
+      transparent 57%) !important;
+}
+
+/* リリスさんのリボンは顔の右上に */
+#selectScreen .fighter-card[data-fighter="purple"] .fighter-emoji::before{
+  right:-7px !important;
+  top:6px !important;
+}
+
+/* 魚・ザリガニは左アイコン欄へ */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji,
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  left:18px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  width:92px !important;
+  height:auto !important;
+  font-size:64px !important;
+  background:none !important;
+}
+
+/* 操作練習：ミニゲームとほぼ同じ幅に戻し、案内は右に添える */
+.practice-entry-wrap{
+  position:relative !important;
+  display:block !important;
+  width:min(590px,78vw) !important;
+  margin:0 auto !important;
+}
+.practice-entry-wrap .practice-btn{
+  width:100% !important;
+  min-width:0 !important;
+  font-size:20px !important;
+  padding:10px 18px !important;
+}
+.practice-beginner-badge{
+  position:absolute !important;
+  left:calc(100% + 10px) !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  font-size:12px !important;
+  padding:6px 9px !important;
+  white-space:nowrap !important;
+}
+
+@media (max-width:760px){
+  #selectScreen .fighter-card{
+    padding-left:108px !important;
+  }
+  #selectScreen .fighter-card .fighter-emoji{
+    left:12px !important;
+    width:82px !important;
+    height:70px !important;
+  }
+  .practice-entry-wrap{
+    width:min(560px,72vw) !important;
+  }
+  .practice-entry-wrap .practice-btn{
+    font-size:18px !important;
+  }
+  .practice-beginner-badge{
+    font-size:11px !important;
+  }
+}
