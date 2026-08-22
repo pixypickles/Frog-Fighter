@@ -788,3 +788,58 @@ button{font:inherit;color:inherit}
   #restartButton.restart-btn{top:52% !important;}
   #titleReturnButton.title-return-btn{top:72% !important;}
 }
+
+/* v6.30: 顔を左へ移動し、名前・説明と重ならないよう専用スペースを確保 */
+#selectScreen .fighter-card{
+  position:relative !important;
+  padding-top:18px !important;
+  padding-bottom:18px !important;
+  padding-left:116px !important;
+  padding-right:18px !important;
+  min-height:150px !important;
+  overflow:hidden !important;
+}
+
+#selectScreen .fighter-card .fighter-emoji{
+  position:absolute !important;
+  left:16px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  width:82px !important;
+  height:64px !important;
+  margin:0 !important;
+  z-index:3 !important;
+}
+
+#selectScreen .fighter-card > strong,
+#selectScreen .fighter-card > small,
+#selectScreen .fighter-card > .special-hint{
+  position:relative;
+  z-index:4;
+}
+
+/* 魚・ザリガニも同じ左側アイコン欄へ */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji,
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  left:16px !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  width:82px !important;
+  height:auto !important;
+  font-size:62px !important;
+  line-height:1 !important;
+}
+
+/* 小さい横画面でも名前の領域を優先 */
+@media (max-width:760px){
+  #selectScreen .fighter-card{
+    padding-left:96px !important;
+    padding-right:10px !important;
+    min-height:142px !important;
+  }
+  #selectScreen .fighter-card .fighter-emoji{
+    left:10px !important;
+    width:72px !important;
+    height:56px !important;
+  }
+}
