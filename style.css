@@ -1277,3 +1277,53 @@ button{font:inherit;color:inherit}
   #selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji{left:12px !important;}
   #selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{left:18px !important;}
 }
+
+/* v6.37 リヴァイア／アスモデウス：他キャラ同様「顔アイコン」に統一 */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji,
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  left:18px !important; top:50% !important; transform:translateY(-50%) !important;
+  width:86px !important; height:70px !important; font-size:0 !important;
+  overflow:visible !important; box-sizing:border-box !important;
+}
+/* ピラニア顔：丸い頭＋目＋歯。尾はなくし、小さなヒレだけ残す */
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji{
+  border-radius:48% 52% 46% 54% !important;
+  background:
+    radial-gradient(circle at 30% 31%,#fff 0 9%,#17251d 10% 14%,transparent 15%),
+    radial-gradient(circle at 68% 31%,#fff 0 9%,#17251d 10% 14%,transparent 15%),
+    linear-gradient(to bottom,#35c94b 0 51%,#ed4b47 52% 100%) !important;
+  box-shadow:inset 0 -5px 0 rgba(0,0,0,.08),0 3px 5px rgba(0,0,0,.13) !important;
+}
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji::before{
+  content:"" !important; position:absolute !important; left:-12px !important; top:28px !important;
+  width:20px !important; height:25px !important; border:0 !important;
+  border-radius:70% 20% 70% 20% !important; background:#37bd48 !important;
+  transform:rotate(-28deg) !important; box-shadow:none !important;
+}
+#selectScreen .fighter-card[data-fighter="piranha"] .fighter-emoji::after{
+  content:"▲ ▲ ▲" !important; position:absolute !important; left:20px !important; top:43px !important;
+  width:48px !important; height:18px !important; color:#fff !important; font-size:9px !important;
+  line-height:12px !important; letter-spacing:-2px !important; text-align:center !important;
+  border-top:4px solid #661e27 !important; border-bottom:0 !important; border-radius:50% !important;
+  background:none !important; transform:rotate(180deg) !important; box-shadow:none !important;
+}
+/* ザリガニ顔：正面の頭部＋目。左右の小さなハサミだけアクセント */
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji{
+  border-radius:46% 46% 52% 52% !important;
+  background:
+    radial-gradient(circle at 31% 28%,#fff 0 8%,#241a16 9% 13%,transparent 14%),
+    radial-gradient(circle at 69% 28%,#fff 0 8%,#241a16 9% 13%,transparent 14%),
+    #e95335 !important;
+  box-shadow:inset 0 -5px 0 rgba(0,0,0,.09),0 3px 5px rgba(0,0,0,.13) !important;
+}
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji::before{
+  content:"" !important; position:absolute !important; left:-19px !important; top:34px !important;
+  width:20px !important; height:16px !important; border:6px solid #e95335 !important;
+  border-right-width:3px !important; border-radius:60% !important; background:transparent !important;
+  transform:rotate(-15deg) !important; box-shadow:92px 0 0 -5px #e95335 !important;
+}
+#selectScreen .fighter-card[data-fighter="crayfish"] .fighter-emoji::after{
+  content:"" !important; position:absolute !important; left:27px !important; top:46px !important;
+  width:32px !important; height:10px !important; border:0 !important; border-bottom:4px solid #79261e !important;
+  border-radius:0 0 60% 60% !important; background:none !important; transform:none !important; box-shadow:none !important;
+}

@@ -2463,7 +2463,7 @@
     leafTargets=[];
     guardTargets=[];
 
-    storyQueue=playableTypes.filter(t=>t!==selectedFighter);
+    storyQueue=playableTypes.filter(t=>t!==selectedFighter && t!=='kawazu');
     if(selectedFighter!=='beelzebub') storyQueue.push('beelzebub');
     storyFightIndex=0;
     storyLosses=0;
@@ -3889,7 +3889,7 @@
           showStoryNarrative([
             '激闘の末、ベルゼブブさんは倒れた。\n\n……\n\n池を眺めていた河津一郎は、我に返った。',
             '河津一郎「……俺も、負けちゃいられないな」\n\n一郎は立ち上がった。\n\nそして――\n\n池に飛び込んだ。\n\nポチャン。',
-            '水かきのついた手足で、ものすごい勢いで水中を泳いでいく河津一郎。\n\n……って、お前もカエルかよ！',
+            '水かきのついた手足で、ものすごい勢いで水中を泳いでいく河津一郎。\n\n河津一郎の泳ぎは、どのカエルよりも速かった。',
             '河津一郎――いや、\n\nカワズさん参戦！！'
           ],()=>{restartButton.hidden=false;});
         }else{
