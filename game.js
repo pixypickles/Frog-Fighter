@@ -24,6 +24,13 @@
   const guardMiniTimeEl=document.getElementById('guardMiniTime');
   const guardMiniScoreEl=document.getElementById('guardMiniScore');
   const guardMiniMissEl=document.getElementById('guardMiniMiss');
+  const raceMiniHud=document.getElementById('raceMiniHud');
+  const raceMiniTimeEl=document.getElementById('raceMiniTime');
+  const raceMiniBestEl=document.getElementById('raceMiniBest');
+  const basketMiniHud=document.getElementById('basketMiniHud');
+  const basketPlayerScoreEl=document.getElementById('basketPlayerScore');
+  const basketEnemyScoreEl=document.getElementById('basketEnemyScore');
+  const basketTimeEl=document.getElementById('basketTime');
   const opponentSelect=document.getElementById('opponentSelect');
   const storyHud=document.getElementById('storyHud');
 
@@ -59,6 +66,10 @@
   let guardMiniActive=false;
   let guardMiniTime=60, guardMiniScore=0, guardMiniMiss=0, guardSpawnTimer=0;
   let guardMiniGuardTapTime=-9999;
+  let raceMiniActive=false, raceMiniStart=0, raceMiniElapsed=0, raceMiniBest=0;
+  let raceCheckpoints=[], raceCheckpointIndex=0, raceObstacles=[];
+  let basketMiniActive=false, basketMiniTime=60, basketPlayerScore=0, basketEnemyScore=0;
+  let basketBall=null, basketHoops=[], basketShotCooldown=0;
   let gameOver = false;
   let comboTimer = 0;
   let comboHits = 0;
@@ -162,6 +173,20 @@
     justGuardMiniBtn.addEventListener('click',e=>{if(window.PointerEvent)return;openGuardMini(e);});
   }
 
+  const raceMiniBtn=document.getElementById('raceMiniBtn');
+  if(raceMiniBtn){
+    const openRace=e=>{if(e){e.preventDefault();e.stopPropagation();}startRaceMiniGame();};
+    raceMiniBtn.addEventListener('pointerup',openRace);
+    raceMiniBtn.addEventListener('click',e=>{if(window.PointerEvent)return;openRace(e);});
+  }
+
+  const basketMiniBtn=document.getElementById('basketMiniBtn');
+  if(basketMiniBtn){
+    const openBasket=e=>{if(e){e.preventDefault();e.stopPropagation();}startBasketMiniGame();};
+    basketMiniBtn.addEventListener('pointerup',openBasket);
+    basketMiniBtn.addEventListener('click',e=>{if(window.PointerEvent)return;openBasket(e);});
+  }
+
   const practiceBtn=document.getElementById('practiceBtn');
   if(practiceBtn){
     const openPractice=(e)=>{
@@ -191,6 +216,10 @@
       if(storyHud) storyHud.hidden=true;
       leafMiniActive=false;
       guardMiniActive=false;
+      raceMiniActive=false;
+      basketMiniActive=false;
+      if(raceMiniHud){raceMiniHud.hidden=true;raceMiniHud.style.display='none';}
+      if(basketMiniHud){basketMiniHud.hidden=true;basketMiniHud.style.display='none';}
       if(leafMiniHud){leafMiniHud.hidden=true;leafMiniHud.style.display='none';}
       if(guardMiniHud){guardMiniHud.hidden=true;guardMiniHud.style.display='none';}
       if(practiceLabel) practiceLabel.style.display='none';
@@ -222,6 +251,8 @@
     if(gameMode==='practice') startPractice();
     else if(gameMode==='leafMini') startLeafMiniGame();
     else if(gameMode==='guardMini') startGuardMiniGame();
+    else if(gameMode==='raceMini') startRaceMiniGame();
+    else if(gameMode==='basketMini') startBasketMiniGame();
     else if(gameMode==='story'){
       if(storyFinished){
         if(storyHud) storyHud.hidden=true;
@@ -1624,7 +1655,7 @@
   }
 
   let player, enemy;
-  let gameMode='battle'; // battle | practice | leafMini | guardMini
+  let gameMode='battle'; // battle | practice | leafMini | guardMini | raceMini | basketMini
   let practiceLabel=null;
   const input={
     x:0,y:0,
@@ -1922,6 +1953,137 @@
     restartButton.hidden=false;
   }
 
+  function hideAllMiniHuds(){
+    if(leafMiniHud){leafMiniHud.hidden=true;leafMiniHud.style.display='none';}
+    if(guardMiniHud){guardMiniHud.hidden=true;guardMiniHud.style.display='none';}
+    if(raceMiniHud){raceMiniHud.hidden=true;raceMiniHud.style.display='none';}
+    if(basketMiniHud){basketMiniHud.hidden=true;basketMiniHud.style.display='none';}
+  }
+
+  function buildRaceCourse(){
+    const left=82, right=innerWidth-82, top=88, bottom=innerHeight-78;
+    raceObstacles=[
+      {x:innerWidth*.30,y:bottom-80,r:27},
+      {x:innerWidth*.47,y:top+85,r:30},
+      {x:innerWidth*.64,y:bottom-100,r:28}
+    ];
+    raceCheckpoints=[
+      {x:left,y:bottom,r:48},
+      {x:raceObstacles[0].x,y:raceObstacles[0].y-78,r:52},
+      {x:raceObstacles[1].x,y:raceObstacles[1].y+82,r:52},
+      {x:raceObstacles[2].x,y:raceObstacles[2].y-82,r:52},
+      {x:right,y:top+26,r:58},
+      {x:right-20,y:bottom-12,r:58},
+      {x:raceObstacles[2].x,y:raceObstacles[2].y+82,r:52},
+      {x:raceObstacles[1].x,y:raceObstacles[1].y-82,r:52},
+      {x:raceObstacles[0].x,y:raceObstacles[0].y+82,r:52},
+      {x:left,y:bottom,r:52}
+    ];
+    raceCheckpointIndex=1;
+  }
+
+  function startRaceMiniGame(){
+    gameMode='raceMini'; gameOver=false; restartButton.hidden=true;
+    comboEl.textContent=''; show('game'); resize();
+    player=new Fighter(82,innerHeight-78,true,selectedFighter);
+    enemy=new PracticeDummy(); enemy.x=-5000; enemy.y=-5000;
+    leafMiniActive=false;guardMiniActive=false;basketMiniActive=false;raceMiniActive=true;
+    hideAllMiniHuds();
+    buildRaceCourse();
+    raceMiniStart=performance.now();raceMiniElapsed=0;
+    try{raceMiniBest=parseFloat(localStorage.getItem('kaeru_race_best')||'0')||0;}catch(e){raceMiniBest=0;}
+    if(raceMiniHud){raceMiniHud.hidden=false;raceMiniHud.style.display='flex';}
+    if(raceMiniTimeEl)raceMiniTimeEl.textContent='0.00';
+    if(raceMiniBestEl)raceMiniBestEl.textContent=raceMiniBest?raceMiniBest.toFixed(2):'--';
+    if(practiceExitButton){practiceExitButton.hidden=false;practiceExitButton.textContent='ミニゲーム終了';}
+    running=true;last=performance.now();updateHud();
+  }
+
+  function endRaceMiniGame(){
+    if(!raceMiniActive)return;
+    raceMiniActive=false;
+    const time=raceMiniElapsed;
+    let best=false;
+    if(!raceMiniBest || time<raceMiniBest){
+      raceMiniBest=time;best=true;
+      try{localStorage.setItem('kaeru_race_best',String(time));}catch(e){}
+    }
+    if(raceMiniBestEl)raceMiniBestEl.textContent=raceMiniBest.toFixed(2);
+    comboEl.textContent=(best?'NEW BEST! ':'FINISH! ')+time.toFixed(2)+' sec';
+    restartButton.hidden=false;
+  }
+
+  function resetBasketBall(){
+    basketBall={x:innerWidth*.5,y:innerHeight*.52,vx:0,vy:0,r:15,owner:null,lastTouch:null};
+    player.x=innerWidth*.28;player.y=innerHeight*.60;player.vx=player.vy=0;
+    enemy.x=innerWidth*.72;enemy.y=innerHeight*.42;enemy.vx=enemy.vy=0;
+  }
+
+  function startBasketMiniGame(){
+    gameMode='basketMini'; gameOver=false; restartButton.hidden=true;
+    comboEl.textContent=''; show('game'); resize();
+    player=new Fighter(innerWidth*.28,innerHeight*.60,true,selectedFighter);
+    enemy=new Fighter(innerWidth*.72,innerHeight*.42,false,'blue');
+    leafMiniActive=false;guardMiniActive=false;raceMiniActive=false;basketMiniActive=true;
+    basketMiniTime=60;basketPlayerScore=0;basketEnemyScore=0;basketShotCooldown=0;
+    basketHoops=[
+      {x:70,y:innerHeight*.27,side:'cpu'},
+      {x:innerWidth-70,y:innerHeight*.27,side:'player'}
+    ];
+    resetBasketBall();
+    hideAllMiniHuds();
+    if(basketMiniHud){basketMiniHud.hidden=false;basketMiniHud.style.display='flex';}
+    if(basketPlayerScoreEl)basketPlayerScoreEl.textContent='0';
+    if(basketEnemyScoreEl)basketEnemyScoreEl.textContent='0';
+    if(basketTimeEl)basketTimeEl.textContent='60.0';
+    if(practiceExitButton){practiceExitButton.hidden=false;practiceExitButton.textContent='ミニゲーム終了';}
+    running=true;last=performance.now();updateHud();
+  }
+
+  function endBasketMiniGame(){
+    if(!basketMiniActive)return;
+    basketMiniActive=false;
+    const result=basketPlayerScore===basketEnemyScore?'DRAW':
+      (basketPlayerScore>basketEnemyScore?'YOU WIN!':'YOU LOSE');
+    comboEl.textContent=`${result} ${basketPlayerScore}-${basketEnemyScore}`;
+    restartButton.hidden=false;
+  }
+
+  function basketTongueUse(f){
+    if(!basketMiniActive || !basketBall || !f)return false;
+    const other=f.isPlayer?enemy:player;
+    const range=(f.tongueRange||220)*1.05;
+    if(basketBall.owner===other &&
+       Math.abs(other.x-f.x)<range &&
+       Math.abs(other.y-f.y)<115){
+      basketBall.owner=f;basketBall.lastTouch=f;
+      comboEl.textContent='TONGUE STEAL!';
+      setTimeout(()=>{if(comboEl.textContent==='TONGUE STEAL!')comboEl.textContent='';},400);
+      return true;
+    }
+    const dx=basketBall.x-f.x,dy=basketBall.y-f.y;
+    if(!basketBall.owner && Math.sign(dx)===f.face && Math.abs(dx)<range && Math.abs(dy)<115){
+      basketBall.owner=f;basketBall.lastTouch=f;basketBall.vx=basketBall.vy=0;
+      comboEl.textContent='BALL CATCH!';
+      setTimeout(()=>{if(comboEl.textContent==='BALL CATCH!')comboEl.textContent='';},340);
+      return true;
+    }
+    return false;
+  }
+
+  function basketShoot(f){
+    if(!basketMiniActive || !basketBall || basketBall.owner!==f || basketShotCooldown>0)return false;
+    const hoop=f.isPlayer?basketHoops[1]:basketHoops[0];
+    const dx=hoop.x-basketBall.x,dy=hoop.y-basketBall.y;
+    const d=Math.hypot(dx,dy)||1;
+    basketBall.owner=null;
+    basketBall.lastTouch=f;
+    basketBall.vx=dx/d*360;
+    basketBall.vy=dy/d*360;
+    basketShotCooldown=.38;
+    return true;
+  }
+
   function startPractice(){
     gameMode='practice';
     updatePracticeHelp();
@@ -2074,6 +2236,8 @@
       guardMiniHud.hidden=true;
       guardMiniHud.style.display='none';
     }
+    if(raceMiniHud){raceMiniHud.hidden=true;raceMiniHud.style.display='none';}
+    if(basketMiniHud){basketMiniHud.hidden=true;basketMiniHud.style.display='none';}
     leafMiniActive=false;
     guardMiniActive=false;
     leafTargets=[];
@@ -3159,6 +3323,14 @@
   }
 
   function attack(f, kind) {
+    if(basketMiniActive){
+      if(kind==='tongue' && basketTongueUse(f)) return;
+      if((kind==='punch' || kind==='kick') && basketBall && basketBall.owner===f){
+        basketShoot(f);
+        return;
+      }
+    }
+
     if(gameOver || f.guard) return;
 
     const rapidTriple=(kind==='punch' || kind==='tongue') ? registerRapidTap(kind) : false;
@@ -3718,7 +3890,7 @@
   addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;if(e.key==='i'&&player)player.guard=false});
 
   function enemyAI(dt){
-    if(gameMode==='practice') return;
+    if(gameMode==='practice' || gameMode==='raceMini' || gameMode==='basketMini') return;
     if(gameOver)return;
 
     // CPUも舌で引かれている時は、たまに投げ抜けを狙う。
@@ -4012,7 +4184,21 @@ function drawBackground(dt){
 
 
       // ラファエルさんの水圧カッター更新
-      if(leafMiniActive){
+      if(basketMiniActive && basketBall){
+      ctx.save();
+      ctx.fillStyle='#f0a13a';ctx.strokeStyle='#6b3d18';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(basketBall.x,basketBall.y,basketBall.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(basketBall.x-basketBall.r,basketBall.y);
+      ctx.lineTo(basketBall.x+basketBall.r,basketBall.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(basketBall.x,basketBall.y,basketBall.r*.58,-Math.PI/2,Math.PI/2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if(leafMiniActive){
         leafMiniTime-=dt;
         leafSpawnTimer-=dt;
 
@@ -4177,6 +4363,98 @@ function drawBackground(dt){
       });
       abyssShocks=abyssShocks.filter(w=>w.t>0 && !w.hit && w.x>-100 && w.x<innerWidth+100);
 
+      if(raceMiniActive){
+        raceMiniElapsed=(performance.now()-raceMiniStart)/1000;
+        if(raceMiniTimeEl)raceMiniTimeEl.textContent=raceMiniElapsed.toFixed(2);
+        const cp=raceCheckpoints[raceCheckpointIndex];
+        if(cp && Math.hypot(player.x-cp.x,player.y-cp.y)<cp.r){
+          raceCheckpointIndex++;
+          if(raceCheckpointIndex>=raceCheckpoints.length){
+            endRaceMiniGame();
+          }
+        }
+        raceObstacles.forEach(o=>{
+          const dx=player.x-o.x,dy=player.y-o.y;
+          const d=Math.hypot(dx,dy)||1;
+          if(d<player.radius+o.r){
+            const rr=player.radius+o.r+3;
+            player.x=o.x+dx/d*rr;
+            player.y=o.y+dy/d*rr;
+            player.vx*=.42;player.vy*=.42;
+          }
+        });
+      }
+
+      if(basketMiniActive){
+        basketMiniTime-=dt;
+        basketShotCooldown=Math.max(0,basketShotCooldown-dt);
+        if(basketTimeEl)basketTimeEl.textContent=Math.max(0,basketMiniTime).toFixed(1);
+
+        if(basketBall){
+          if(basketBall.owner){
+            const f=basketBall.owner;
+            basketBall.x=f.x+f.face*43;
+            basketBall.y=f.y+5;
+          }else{
+            basketBall.vy+=10*dt;
+            basketBall.vx*=Math.pow(.993,dt*60);
+            basketBall.vy*=Math.pow(.995,dt*60);
+            basketBall.x+=basketBall.vx*dt;
+            basketBall.y+=basketBall.vy*dt;
+            if(basketBall.x<18||basketBall.x>innerWidth-18)basketBall.vx*=-.72;
+            if(basketBall.y<55||basketBall.y>innerHeight-50)basketBall.vy*=-.72;
+            basketBall.x=Math.max(18,Math.min(innerWidth-18,basketBall.x));
+            basketBall.y=Math.max(55,Math.min(innerHeight-50,basketBall.y));
+
+            for(const hoop of basketHoops){
+              if(Math.hypot(basketBall.x-hoop.x,basketBall.y-hoop.y)<29){
+                if(hoop.side==='player' && basketBall.lastTouch===player){
+                  basketPlayerScore++;
+                  if(basketPlayerScoreEl)basketPlayerScoreEl.textContent=String(basketPlayerScore);
+                  comboEl.textContent='SCORE!';
+                  resetBasketBall();
+                  break;
+                }
+                if(hoop.side==='cpu' && basketBall.lastTouch===enemy){
+                  basketEnemyScore++;
+                  if(basketEnemyScoreEl)basketEnemyScoreEl.textContent=String(basketEnemyScore);
+                  comboEl.textContent='CPU SCORE';
+                  resetBasketBall();
+                  break;
+                }
+              }
+            }
+
+            for(const f of [player,enemy]){
+              if(!basketBall.owner && Math.hypot(f.x-basketBall.x,f.y-basketBall.y)<f.radius+basketBall.r+7){
+                basketBall.owner=f;basketBall.lastTouch=f;break;
+              }
+            }
+          }
+        }
+
+        // 1on1 CPU: ボールへ移動、保持したらリングへ。舌でも奪う。
+        if(enemy && enemy.stun<=0 && basketBall){
+          const target=basketBall.owner===enemy?basketHoops[0]:
+            (basketBall.owner===player?player:basketBall);
+          const dx=target.x-enemy.x,dy=target.y-enemy.y;
+          enemy.vx+=Math.sign(dx)*enemy.speed*.82*dt;
+          enemy.vy+=Math.sign(dy)*enemy.speed*.54*dt;
+
+          if(basketBall.owner===enemy){
+            if(Math.hypot(enemy.x-basketHoops[0].x,enemy.y-basketHoops[0].y)<255 && Math.random()<dt*1.5){
+              basketShoot(enemy);
+            }
+          }else if(basketBall.owner===player &&
+                   Math.abs(player.x-enemy.x)<enemy.tongueRange*.95 &&
+                   Math.random()<dt*.75){
+            basketTongueUse(enemy);
+          }
+        }
+
+        if(basketMiniTime<=0){basketMiniTime=0;endBasketMiniGame();}
+      }
+
       pressureBlades.forEach(p=>{
         p.t-=dt; p.x+=p.vx*dt; p.y+=(p.vy||0)*dt;
         const target=p.owner && p.owner.isPlayer ? enemy : player;
@@ -4314,6 +4592,63 @@ function drawBackground(dt){
     drawBackground(dt);
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
+
+    if(raceMiniActive){
+      ctx.save();
+      ctx.strokeStyle='rgba(255,255,255,.25)';
+      ctx.lineWidth=3;
+      ctx.setLineDash([8,10]);
+      ctx.beginPath();
+      raceCheckpoints.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      for(let i=0;i<raceCheckpoints.length-1;i++){
+        const a=raceCheckpoints[i],b=raceCheckpoints[i+1];
+        const x=a.x+(b.x-a.x)*.55,y=a.y+(b.y-a.y)*.55;
+        const ang=Math.atan2(b.y-a.y,b.x-a.x);
+        ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+        ctx.fillStyle='rgba(255,242,120,.84)';
+        ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(-10,-9);ctx.lineTo(-5,0);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();
+        ctx.restore();
+      }
+
+      raceObstacles.forEach(o=>{
+        ctx.save();ctx.translate(o.x,o.y);
+        ctx.fillStyle='#685674';ctx.strokeStyle='#e0bdff';ctx.lineWidth=3;
+        ctx.beginPath();
+        for(let i=0;i<16;i++){
+          const a=i*Math.PI/8,rr=i%2===0?o.r*1.58:o.r;
+          const x=Math.cos(a)*rr,y=Math.sin(a)*rr;
+          if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+        }
+        ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      });
+
+      const cp=raceCheckpoints[raceCheckpointIndex];
+      if(cp){
+        ctx.strokeStyle='rgba(255,255,125,.8)';ctx.lineWidth=4;
+        ctx.beginPath();ctx.arc(cp.x,cp.y,cp.r*.72,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    if(basketMiniActive){
+      ctx.save();
+      basketHoops.forEach(hoop=>{
+        ctx.strokeStyle='#f7d660';ctx.lineWidth=5;
+        ctx.beginPath();ctx.arc(hoop.x,hoop.y,27,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;
+        ctx.beginPath();
+        for(let x=-16;x<=16;x+=8){
+          ctx.moveTo(hoop.x+x,hoop.y+20);
+          ctx.lineTo(hoop.x+x*.45,hoop.y+48);
+        }
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
     player.draw();
     enemy.draw();
 

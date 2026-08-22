@@ -15,7 +15,7 @@
       <h1>カエルファイター</h1>
       <p class="subtitle">池のいちばん強いヤツを決めろ！</p>
       <p class="rotate-note">スマホを横持ちしてください</p>
-      <div class="start-version">VERSION 6.15</div>
+      <div class="start-version">VERSION 6.16</div>
       <button id="desktopStart" class="soft-btn">PCで試す</button>
     </section>
 
@@ -121,6 +121,8 @@
         <button id="practiceBtn" class="practice-btn">操作練習</button>
         <button id="minigameBtn" class="practice-btn">ミニゲーム①：葉っぱ割り</button>
       <button id="justGuardMiniBtn" class="practice-btn">ミニゲーム②：ジャストガード</button>
+      <button id="raceMiniBtn" class="practice-btn">ミニゲーム③：水中レース</button>
+      <button id="basketMiniBtn" class="practice-btn">ミニゲーム④：水中バスケ 1on1</button>
       </div>
 
       <p class="auto-attack-note">自動補正：相手が上ならパンチが上向き / 相手が下ならキックが下向き</p>
@@ -145,6 +147,23 @@
         <strong>LEAF BREAK</strong>
         <span>残り <b id="leafMiniTime">60.0</b> 秒</span>
         <span>スコア <b id="leafMiniScore">0</b></span>
+      </div>
+      <div id="guardMiniHud" class="leaf-mini-hud" hidden>
+        <strong>JUST GUARD</strong>
+        <span>残り <b id="guardMiniTime">60.0</b> 秒</span>
+        <span>成功 <b id="guardMiniScore">0</b></span>
+        <span>ミス <b id="guardMiniMiss">0</b></span>
+      </div>
+      <div id="raceMiniHud" class="leaf-mini-hud" hidden>
+        <strong>WATER RACE</strong>
+        <span>TIME <b id="raceMiniTime">0.00</b></span>
+        <span>BEST <b id="raceMiniBest">--</b></span>
+      </div>
+      <div id="basketMiniHud" class="leaf-mini-hud" hidden>
+        <strong>WATER BASKET 1on1</strong>
+        <span>YOU <b id="basketPlayerScore">0</b></span>
+        <span>CPU <b id="basketEnemyScore">0</b></span>
+        <span>残り <b id="basketTime">60.0</b></span>
       </div>
       <div id="hud">
         <div class="hp-wrap left">
@@ -181,7 +200,7 @@
     <div id="portraitOverlay">
       <div class="portrait-frog">🐸</div>
       <strong>スマホを横持ちしてください</strong>
-      <span class="portrait-version">VERSION 6.15</span>
+      <span class="portrait-version">VERSION 6.16</span>
     </div>
   </div>
   <script src="game.js"></script>
